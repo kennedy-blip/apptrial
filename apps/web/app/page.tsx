@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo } from 'react'
-import { parse as parseCsv } from 'papaparse'
+import { parse as parseCsv, unparse } from 'papaparse'
 import * as XLSX from 'xlsx'
 import { Download, FileText, BarChart3, Wand2, LayoutGrid, AlertCircle, Check, Loader2, RotateCw } from 'lucide-react'
 import { DataTable } from '@/components/data-table'
@@ -17,6 +17,31 @@ export interface ParsedDataset {
   columns: string[]
   rows: Row[]
   rawRows: Row[] // original, before cleaning
+}
+
+const SAMPLE_CSV = `date,product,region,units,revenue,rating
+2024-01-01,Widget A,North,10,250.00,4.5
+2024-01-02,Widget B,South,15,375.00,4.2
+2024-01-01,Widget A,North,10,250.00,4.5
+2024-01-03, Widget C ,East,20,,4.0
+2024-01-04,Widget A,West,8,200.00,
+2024-01-05,Widget B,South,12,300.00,3.8
+,Widget C,East,20,500.00,4.7
+2024-01-07,Widget A,North,10,250.00,4.5
+2024-01-08,Widget D,West,5,125.00,4.1
+2024-01-08,Widget D,West,5,125.00,4.1`
+
+function setDatasetFromParsed(
+  setDataset: (d: ParsedDataset) => void,
+  setCleaned: () => void,
+  setActiveTab: (t: Tab) => void,
+  name: string,
+  columns: string[],
+  rows: Row[]
+) {
+  setDataset({ name, columns, rows, rawRows: [...rows] })
+  setCleaned()
+  setActiveTab('clean')
 }
 
 export default function Home() {
@@ -102,14 +127,7 @@ export default function Home() {
           throw new Error('No data rows found in file')
         }
 
-        setDataset({
-          name: file.name,
-          columns,
-          rows,
-          rawRows: [...rows],
-        })
-        setCleaned(null)
-        setActiveTab('clean')
+        setDatasetFromParsed(setDataset, () => setCleaned(null), setActiveTab, file.name, columns, rows)
       } catch (err) {
         setParseError(err instanceof Error ? err.message : 'Unknown parse error')
       } finally {
@@ -127,6 +145,29 @@ export default function Home() {
     } else {
       reader.readAsText(file)
     }
+  }, [])
+
+  const loadSampleDataset = useCallback(() => {
+    setParseError(null)
+    setIsParsing(true)
+    setTimeout(() => {
+      try {
+        const parsed = parseCsv(SAMPLE_CSV, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+        })
+        const columns = parsed.meta.fields ?? []
+        const rows = (parsed.data as unknown as Row[]).filter(
+          (r) => Object.values(r).some((v) => v !== null && v !== undefined && v !== '')
+        )
+        setDatasetFromParsed(setDataset, () => setCleaned(null), setActiveTab, 'sample-data.csv', columns, rows)
+      } catch (err) {
+        setParseError(err instanceof Error ? err.message : 'Unknown parse error')
+      } finally {
+        setIsParsing(false)
+      }
+    }, 300)
   }, [])
 
   const resultIsBuffer = (ext: string) => ext === 'xlsx' || ext === 'xls'
@@ -217,10 +258,18 @@ export default function Home() {
                 />
               </label>
               <button
-                className="px-8 py-4 bg-white text-slate-700 rounded-xl font-semibold text-lg border border-slate-200 hover:bg-slate-50 transition"
-                disabled
+                onClick={loadSampleDataset}
+                disabled={isParsing}
+                className={`px-8 py-4 bg-white text-slate-700 rounded-xl font-semibold text-lg border border-slate-200 hover:bg-slate-50 transition ${isParsing ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
-                Try sample data
+                {isParsing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Loading…
+                  </>
+                ) : (
+                  'Try sample data'
+                )}
               </button>
             </div>
 
@@ -268,13 +317,21 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setChartPng(null)}
                 className="px-3 py-2 text-sm text-slate-600 hover:text-slate-900"
               >
                 Back to upload
               </button>
+              <a
+                href={URL.createObjectURL(new Blob([unparse(currentRows)], { type: 'text/csv' }))}
+                download={`cleaned-${dataset.name.replace(/\.[^/.]+$/, '')}.csv`}
+                className="px-4 py-2 bg-slate-900 text-white rounded-lg font-semibold text-sm hover:bg-slate-800 transition flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Export CSV
+              </a>
               <a
                 href={URL.createObjectURL(new Blob([JSON.stringify(currentRows, null, 2)], { type: 'application/json' }))}
                 download={`cleaned-${dataset.name.replace(/\.[^/.]+$/, '')}.json`}

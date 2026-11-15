@@ -45,6 +45,7 @@ export function ChartStudio({ columns, rows, numericCols, stats, onExportPng }: 
   const [xCol, setXCol] = useState<string | null>(columns[0] ?? null)
   const [yCol, setYCol] = useState<string | null>(numericCols[0] ?? null)
   const [chartTitle, setChartTitle] = useState('My Chart')
+  const [chartColor, setChartColor] = useState('#6366f1')
   const chartRef = useRef<HTMLDivElement>(null)
 
   const xValues = rows.map((r) => r[xCol ?? ''])
@@ -66,8 +67,8 @@ export function ChartStudio({ columns, rows, numericCols, stats, onExportPng }: 
           {
             label: `${yCol} vs ${xCol}`,
             data: points as { x: number | string; y: number | string }[],
-            backgroundColor: '#6366f1',
-            borderColor: '#4f46e5',
+            backgroundColor: chartColor,
+            borderColor: chartColor,
           },
         ],
       }
@@ -90,7 +91,7 @@ export function ChartStudio({ columns, rows, numericCols, stats, onExportPng }: 
       }
       return {
         labels: bins.map((b) => b.label),
-        datasets: [{ label: `Count of ${yCol}`, data: bins.map((b) => b.count), backgroundColor: '#6366f1' }],
+        datasets: [{ label: `Count of ${yCol}`, data: bins.map((b) => b.count), backgroundColor: chartColor }],
       }
     }
 
@@ -100,15 +101,15 @@ export function ChartStudio({ columns, rows, numericCols, stats, onExportPng }: 
         {
           label: yCol ?? 'Value',
           data: yValues,
-          backgroundColor: '#6366f1',
-          borderColor: '#4f46e5',
+          backgroundColor: chartColor,
+          borderColor: chartColor,
           borderWidth: 2,
           fill: chartType === 'line',
           tension: chartType === 'line' ? 0.3 : 0,
         },
       ],
     }
-  }, [rows, chartType, xCol, yCol, numericY, xValues, yValues])
+  }, [rows, chartType, xCol, yCol, numericY, xValues, yValues, chartColor])
 
   const options = useMemo(() => ({
     ...EMPTY_OPTIONS,
@@ -192,6 +193,19 @@ export function ChartStudio({ columns, rows, numericCols, stats, onExportPng }: 
                   placeholder="My Chart"
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-2">Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={chartColor}
+                    onChange={(e) => setChartColor(e.target.value)}
+                    className="w-10 h-10 cursor-pointer border-0 bg-transparent rounded-lg"
+                  />
+                  <span className="text-xs text-slate-500">{chartColor}</span>
+                </div>
               </div>
 
               <div>
