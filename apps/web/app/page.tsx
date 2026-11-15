@@ -1,275 +1,381 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
+import { parse as parseCsv } from 'papaparse'
+import * as XLSX from 'xlsx'
+import { Download, FileText, BarChart3, Wand2, LayoutGrid, AlertCircle, Check, Loader2, RotateCw } from 'lucide-react'
+import { DataTable } from '@/components/data-table'
+import { DataCleaner } from '@/components/data-cleaner'
+import { ChartStudio } from '@/components/chart-studio'
+import { SummaryCards } from '@/components/summary-cards'
+import { analyzeColumn, cleanRows, correlation, type ColumnStats, type Row } from '@/lib/stats'
 
-// Where the built .apk is served from.
-// Options: '/AppTrial.apk' (place the built APK in apps/web/public/)
-//          or a GitHub Release asset URL after CI builds it for you.
-const APK_DOWNLOAD_URL = '/AppTrial.apk'
+type Tab = 'parser' | 'clean' | 'visualize' | 'summary'
+
+export interface ParsedDataset {
+  name: string
+  columns: string[]
+  rows: Row[]
+  rawRows: Row[] // original, before cleaning
+}
 
 export default function Home() {
-  const [modalOpen, setModalOpen] = useState(false)
-  const [downloading, setDownloading] = useState(false)
+  const [dataset, setDataset] = useState<ParsedDataset | null>(null)
+  const [cleaned, setCleaned] = useState<Row[] | null>(null)
+  const [activeTab, setActiveTab] = useState<Tab>('parser')
+  const [isParsing, setIsParsing] = useState(false)
+  const [parseError, setParseError] = useState<string | null>(null)
+  const [chartPng, setChartPng] = useState<string | null>(null)
 
-  // Gentle one-time suggestion popup on first visit
-  useEffect(() => {
-    const suggested = localStorage.getItem('apptrial:suggested')
-    if (!suggested) {
-      setModalOpen(true)
-      localStorage.setItem('apptrial:suggested', '1')
+  const handleFile = useCallback((file: File) => {
+    setParseError(null)
+    setIsParsing(true)
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+    const reader = new FileReader()
+
+    reader.onload = (e) => {
+      try {
+        const result = e.target?.result
+        if (!result) throw new Error('Failed to read file')
+
+        let columns: string[] = []
+        let rows: Row[] = []
+
+        if (ext === 'csv') {
+          const text = typeof result === 'string' ? result : new TextDecoder().decode(result as ArrayBuffer)
+          const parsed = parseCsv(text, {
+            header: true,
+            dynamicTyping: true,
+            skipEmptyLines: true,
+          })
+          if (parsed.errors.length > 0 && parsed.data.length === 0) {
+            throw new Error(parsed.errors[0].message ?? 'CSV parse error')
+          }
+          columns = parsed.meta.fields ?? []
+          rows = (parsed.data as unknown as Row[]).filter(
+            (r) => Object.values(r).some((v) => v !== null && v !== undefined && v !== '')
+          )
+        } else if (ext === 'json') {
+          const text = typeof result === 'string' ? result : new TextDecoder().decode(result as ArrayBuffer)
+          const data = JSON.parse(text)
+          if (Array.isArray(data)) {
+            columns = data.length > 0 ? Object.keys(data[0]) : []
+            rows = data as Row[]
+          } else if (data && typeof data === 'object') {
+            // object of arrays -> transpose
+            const keys = Object.keys(data)
+            const firstKey = keys[0]
+            const len = Array.isArray(data[firstKey]) ? data[firstKey].length : 0
+            columns = keys
+            rows = []
+            for (let i = 0; i < len; i++) {
+              const r: Row = {}
+              for (const k of keys) {
+                const arr = data[k]
+                r[k] = Array.isArray(arr) ? arr[i] : undefined
+              }
+              rows.push(r)
+            }
+          } else {
+            throw new Error('Unsupported JSON structure. Use an array of objects.')
+          }
+        } else if (ext === 'xlsx' || ext === 'xls') {
+          const buffer = result as ArrayBuffer
+          const workbook = XLSX.read(buffer, { type: 'array' })
+          const sheetName = workbook.SheetNames[0]
+          const sheet = workbook.Sheets[sheetName]
+          const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }) as unknown[][]
+          if (json.length < 2) throw new Error('Excel sheet is empty')
+          columns = (json[0] as unknown[]).map(String)
+          rows = json.slice(1).map((r) => {
+            const obj: Row = {}
+            columns.forEach((c, i) => {
+              obj[c] = r[i]
+            })
+            return obj
+          })
+        } else {
+          throw new Error('Unsupported file type. Upload .csv, .json, or .xlsx')
+        }
+
+        if (rows.length === 0) {
+          throw new Error('No data rows found in file')
+        }
+
+        setDataset({
+          name: file.name,
+          columns,
+          rows,
+          rawRows: [...rows],
+        })
+        setCleaned(null)
+        setActiveTab('clean')
+      } catch (err) {
+        setParseError(err instanceof Error ? err.message : 'Unknown parse error')
+      } finally {
+        setIsParsing(false)
+      }
+    }
+
+    reader.onerror = () => {
+      setParseError('Failed to read file')
+      setIsParsing(false)
+    }
+
+    if (resultIsBuffer(ext)) {
+      reader.readAsArrayBuffer(file)
+    } else {
+      reader.readAsText(file)
     }
   }, [])
 
-  const handleDownload = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    setDownloading(true)
-    // Let the browser download; keep modal open so user can see install steps
-    setTimeout(() => setDownloading(false), 1500)
+  const resultIsBuffer = (ext: string) => ext === 'xlsx' || ext === 'xls'
+
+  const handleClean = useCallback(
+    (actions: Parameters<typeof cleanRows>[1]) => {
+      if (!dataset) return
+      const next = cleanRows(dataset.rows, actions)
+      setCleaned(next)
+    },
+    [dataset]
+  )
+
+  const currentRows = cleaned ?? dataset?.rows ?? []
+  const columns = dataset?.columns ?? []
+
+  const stats = useMemo(() => {
+    if (currentRows.length === 0) return []
+    return columns.map((col) => {
+      const values = currentRows.map((r) => r[col])
+      return analyzeColumn(col, values)
+    })
+  }, [currentRows, columns])
+
+  const numericCols = stats.filter((s) => s.type === 'numeric').map((s) => s.name)
+
+  const reset = () => {
+    setDataset(null)
+    setCleaned(null)
+    setParseError(null)
+    setChartPng(null)
+    setActiveTab('parser')
+  }
+
+  if (!dataset) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <nav className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <span className="font-bold text-xl tracking-tight text-slate-900">DataDrop</span>
+                <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">Offline-first</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={reset}
+                  className="text-sm text-slate-500 hover:text-slate-700 font-medium"
+                  disabled={!dataset}
+                >
+                  New dataset
+                </button>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        <div className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="text-center py-24">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold mb-6 uppercase tracking-wider">
+              DataDrop · Mobile Data Cleaner
+            </div>
+            <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-slate-900 mb-6">
+              Inspect & clean your data<br />
+              <span className="text-indigo-600">right on your phone.</span>
+            </h1>
+            <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
+              Upload a CSV, JSON, or Excel file to instantly see row counts, column types, nulls, and
+              outliers. Then clean, chart, and export — no code, no server, works fully offline once
+              installed as an app.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <label className="px-8 py-4 bg-indigo-600 text-white rounded-xl font-semibold text-lg hover:bg-indigo-700 shadow-lg hover:shadow-indigo-500/30 transition cursor-pointer">
+                <Download className="w-5 h-5 mr-2" />
+                Choose file (CSV / JSON / Excel)
+                <input
+                  type="file"
+                  accept=".csv,.json,.xlsx,.xls"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) handleFile(f)
+                  }}
+                />
+              </label>
+              <button
+                className="px-8 py-4 bg-white text-slate-700 rounded-xl font-semibold text-lg border border-slate-200 hover:bg-slate-50 transition"
+                disabled
+              >
+                Try sample data
+              </button>
+            </div>
+
+            <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              {[
+                { label: 'CSV · JSON · Excel', desc: 'Instant file parser' },
+                { label: 'Dedupe · Trim · Fill', desc: 'One-tap cleaning' },
+                { label: 'Bar · Line · Scatter', desc: 'Quick charts' },
+                { label: 'Mean · Median · StdDev', desc: 'Summary cards' },
+              ].map((f) => (
+                <div key={f.label} className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="text-sm font-semibold text-slate-900">{f.label}</div>
+                  <div className="text-xs text-slate-500 mt-1">{f.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <nav className="sticky top-0 z-40 glass-panel">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex flex-col bg-slate-50">
+      <nav className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold">
-                A
-              </div>
-              <span className="font-bold text-xl tracking-tight">AppTrial</span>
-            </div>
-            <div className="hidden md:flex items-center gap-6">
-              <a href="#features" className="text-slate-600 hover:text-indigo-600 font-medium transition">
-                Features
-              </a>
-              <a href="#download" className="text-slate-600 hover:text-indigo-600 font-medium transition">
-                Download
-              </a>
-              <a
-                href={APK_DOWNLOAD_URL}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition"
-                download
+            <div className="flex items-center gap-3">
+              <button
+                onClick={reset}
+                className="p-2 text-slate-400 hover:text-indigo-600"
+                title="New dataset"
               >
-                Get the APK
+                <RotateCw className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-900 text-sm">{dataset.name}</span>
+                  <span className="text-xs text-slate-500">
+                    {dataset.rows.length} rows × {dataset.columns.length} cols
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setChartPng(null)}
+                className="px-3 py-2 text-sm text-slate-600 hover:text-slate-900"
+              >
+                Back to upload
+              </button>
+              <a
+                href={URL.createObjectURL(new Blob([JSON.stringify(currentRows, null, 2)], { type: 'application/json' }))}
+                download={`cleaned-${dataset.name.replace(/\.[^/.]+$/, '')}.json`}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold text-sm hover:bg-indigo-700 transition flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Export JSON
               </a>
             </div>
-            <button
-              onClick={() => setModalOpen(true)}
-              className="md:hidden p-2 text-slate-600 hover:text-indigo-600"
-              aria-label="Open download menu"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
           </div>
         </div>
       </nav>
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Hero */}
-        <section className="text-center py-16 sm:py-24">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-sm font-semibold mb-6">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600"></span>
-            </span>
-            Built for mobile
-          </div>
-          <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-slate-900 mb-6">
-            AppTrial in your browser,<br />
-            <span className="text-indigo-600">the app on your phone.</span>
-          </h1>
-          <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Open the link, try the experience right here, then download and install the Android APK so
-            you can use it anytime — even offline.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onClick={() => setModalOpen(true)}
-              className="px-8 py-4 bg-indigo-600 text-white rounded-xl font-semibold text-lg hover:bg-indigo-700 shadow-lg hover:shadow-indigo-500/30 transition"
-            >
-              Download & install APK
-            </button>
-            <a href="#features" className="px-8 py-4 bg-white text-slate-700 rounded-xl font-semibold text-lg border border-slate-200 hover:bg-slate-50 transition">
-              See features
-            </a>
-          </div>
-
-          <div className="mt-16 flex items-center justify-center gap-4 opacity-60 text-sm text-slate-500">
-            <span className="h-px bg-slate-300 flex-1"></span>
-            <span>Or scan to open</span>
-            <span className="h-px bg-slate-300 flex-1"></span>
-          </div>
-          <div className="mt-6 flex justify-center">
-            <div className="w-40 h-40 rounded-2xl bg-white shadow p-2 flex items-center justify-center border border-slate-100">
-              <svg className="w-24 h-24 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-          </div>
-        </section>
-
-        {/* Features */}
-        <section id="features" className="py-20 border-t border-slate-200">
-          <h2 className="text-3xl font-bold text-center text-slate-900 mb-12">Why install the app?</h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                title: 'Works offline',
-                desc: 'Once installed, the app runs without an internet connection.',
-                icon: 'wifi',
-              },
-              {
-                title: 'Faster than the web',
-                desc: 'Native performance and instant launches from your home screen.',
-                icon: 'zap',
-              },
-              {
-                title: 'Always up to date',
-                desc: 'Open the app and it checks for updates automatically.',
-                icon: 'refresh-cw',
-              },
-            ].map((feature) => (
-              <div
-                key={feature.title}
-                className="p-8 rounded-2xl bg-white border border-slate-200 hover:shadow-lg hover:border-slate-300 transition"
-              >
-                <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 mb-6">
-                  {feature.icon === 'wifi' && (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 15a6 6 0 0112 0m0 0a6 6 0 0112 0M3 15a6 6 0 01-1.143-3.782c-.205-.783-.205-1.73-.205-2.782a3 3 0 015.988 0m-5.988 0a3 3 0 005.988 0m-3.112 0a14.002 14.002 0 017.896 0m-7.896 0a14.002 14.002 0 007.896 0" />
-                    </svg>
-                  )}
-                  {feature.icon === 'zap' && (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  )}
-                  {feature.icon === 'refresh-cw' && (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                  )}
-                </div>
-                <h3 className="text-xl font-semibold text-slate-900 mb-3">{feature.title}</h3>
-                <p className="text-slate-600 leading-relaxed">{feature.desc}</p>
+      {parseError && (
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="rounded-xl bg-red-50 border border-red-200 p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-red-900">Parse error</h3>
+                <p className="text-sm text-red-700 mt-1">{parseError}</p>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Download suggestion section */}
-        <section id="download" className="py-20">
-          <div className="max-w-2xl mx-auto text-center">
-            <h2 className="text-3xl font-bold text-slate-900 mb-4">Ready to install?</h2>
-            <p className="text-slate-600 mb-8">
-              Tap below to download the <span className="font-medium">AppTrial.apk</span> file and install it on your Android device.
-            </p>
-            <button
-              onClick={() => setModalOpen(true)}
-              className="inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-xl font-semibold text-lg hover:bg-indigo-700 shadow-lg hover:shadow-indigo-500/30 transition"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Download AppTrial.apk
-            </button>
-          </div>
-        </section>
-      </main>
-
-      <footer className="border-t border-slate-200 bg-white py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
-          <span>AppTrial. Built with Next.js + Capacitor.</span>
-          <span className="flex gap-4">
-            <a href="#" className="hover:text-slate-900">Privacy</a>
-            <a href="#" className="hover:text-slate-900">Terms</a>
-          </span>
-        </div>
-      </footer>
-
-      {/* Download modal */}
-      <div
-        className={`
-          fixed inset-0 z-50 ${modalOpen ? 'flex' : 'hidden'}
-          items-center justify-center
-          bg-slate-900/60 backdrop-blur-sm
-          transition-opacity duration-200
-        `}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Download app"
-      >
-        {/* Backdrop click to close */}
-        <button
-          onClick={() => setModalOpen(false)}
-          className="absolute inset-0 w-full h-full"
-          aria-hidden="true"
-        />
-        <div className="relative w-full max-w-md mx-auto p-6">
-          <div className="glass-panel rounded-2xl p-8 relative overflow-hidden">
-            <div className="w-16 h-16 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-2xl mb-6">
-              ⬇
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 text-center mb-2">Download AppTrial</h2>
-            <p className="text-slate-600 text-center mb-8">
-              Install the Android app and open it anytime from your home screen.
-            </p>
+          </div>
+        </div>
+      )}
 
-            <div className="space-y-3">
+      <div className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex gap-2 mb-6">
+          {[
+            ['parser', 'Parser'],
+            ['clean', 'Clean'],
+            ['visualize', 'Charts'],
+            ['summary', 'Summary'],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key as Tab)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
+                activeTab === key
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+          {activeTab === 'parser' && (
+            <div className="p-6 border-b border-slate-100">
+              <h2 className="text-lg font-semibold text-slate-900 mb-2">Dataset preview</h2>
+              <p className="text-sm text-slate-500 mb-4">
+                First 50 rows shown. Use Clean to transform, then Charts or Summary to analyze.
+              </p>
+              <DataTable columns={columns} rows={currentRows} maxRows={50} />
+            </div>
+          )}
+          {activeTab === 'clean' && (
+            <DataCleaner dataset={dataset} onClean={handleClean} />
+          )}
+          {activeTab === 'visualize' && (
+            <ChartStudio
+              columns={columns}
+              rows={currentRows}
+              numericCols={numericCols}
+              stats={stats}
+              onExportPng={setChartPng}
+            />
+          )}
+          {activeTab === 'summary' && (
+            <SummaryCards columns={columns} rows={currentRows} stats={stats} />
+          )}
+        </div>
+
+        {chartPng && (
+          <div className="mt-6 rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Chart export</h2>
               <a
-                href={APK_DOWNLOAD_URL}
-                onClick={handleDownload}
-                download
-                className={`w-full py-5 rounded-xl flex items-center justify-center gap-3 font-semibold text-lg transition ${
-                  downloading
-                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                    : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg hover:shadow-indigo-500/30'
-                }`}
+                href={chartPng}
+                download="datadrop-chart.png"
+                className="px-4 py-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700"
               >
-                {downloading ? (
-                  <>
-                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l7-7.007z"
-                      ></path>
-                    </svg>
-                    Preparing download…
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    Download AppTrial.apk
-                  </>
-                )}
+                <Download className="w-4 h-4 mr-2" /> Download PNG
               </a>
             </div>
-
-            <div className="mt-8 pt-6 border-t border-slate-200">
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">How to install</h3>
-              <ol className="text-sm text-slate-600 space-y-2 list-disc pl-5">
-                <li>Tap <strong>Download AppTrial.apk</strong> above.</li>
-                <li>If Chrome blocks the file, tap <strong>Keep</strong> or <strong>Download anyway</strong>.</li>
-                <li>Open the downloaded file and tap <strong>Install</strong>.</li>
-                <li>If prompted, enable <strong>Install from this browser</strong> in Settings → Apps → Special app access.</li>
-                <li>Open AppTrial from your home screen.</li>
-              </ol>
+            <div className="p-6 flex justify-center items-center min-h-[300px] bg-slate-50">
+              <img src={chartPng} alt="Exported chart" className="max-w-full max-h-[500px] rounded-lg border border-slate-200 shadow" />
             </div>
-
-            <button
-              onClick={() => setModalOpen(false)}
-              className="mt-8 w-full text-sm text-slate-500 hover:text-slate-700"
-            >
-              Maybe later
-            </button>
           </div>
-        </div>
+        )}
       </div>
+
+      <footer className="border-t border-slate-200 bg-white py-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-3 text-xs text-slate-400">
+          <span>DataDrop — client-side only. Your data never leaves your device.</span>
+          <span>CSV · JSON · Excel · Offline · PNG export</span>
+        </div>
+      </footer>
     </div>
   )
 }
