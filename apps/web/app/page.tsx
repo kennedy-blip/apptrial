@@ -14,9 +14,7 @@ import {
   Moon,
   Sun,
 } from 'lucide-react'
-import {
-  motion,
-} from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { DataTable } from '@/components/data-table'
 import { DataCleaner } from '@/components/data-cleaner'
 import { ChartStudio } from '@/components/chart-studio'
@@ -112,12 +110,8 @@ export default function Home() {
   const [chartPng, setChartPng] = useState<string | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
 
-  // Dark mode persistence
+  // Dark mode persistence — sync to <html> class for Tailwind darkMode: 'class'
   useEffect(() => {
-    const saved = localStorage.getItem('datadrop:dark')
-    if (saved === '1' || (saved === null && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      setDarkMode(true)
-    }
     if (darkMode) {
       document.documentElement.classList.add('dark')
     } else {
@@ -128,7 +122,9 @@ export default function Home() {
   const toggleDark = () => {
     const next = !darkMode
     setDarkMode(next)
-    localStorage.setItem('datadrop:dark', next ? '1' : '0')
+    try {
+      localStorage.setItem('datadrop:dark', next ? '1' : '0')
+    } catch {}
   }
 
   const handleFile = useCallback((file: File) => {
@@ -292,12 +288,9 @@ export default function Home() {
   ]
 
   const isLight = !darkMode
-  const bgGradient = isLight
-    ? 'bg-gradient-to-b from-slate-50 via-white to-slate-100'
-    : 'bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950'
 
   return (
-    <div className={`min-h-screen flex flex-col transition-colors duration-300 ${bgGradient}`}>
+    <div className="min-h-screen flex flex-col overflow-x-hidden selection:bg-indigo-500 selection:text-white">
       {!dataset ? (
         <LandingSection
           handleFile={handleFile}
@@ -358,37 +351,46 @@ const LandingSection = (props: LandingSectionProps) => {
     isLight,
     textMain,
     textMuted,
-  } = props;
+  } = props
 
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="sticky top-0 z-40 border-b border-white/10 bg-white/10 backdrop-blur-xl"
+        exit={{ opacity: 0 }}
+        className="sticky top-0 z-40 border-b border-white/10 bg-white/10 backdrop-blur-xl transition-colors duration-300"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-3"
+            >
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/40">
                 <FileText className="w-6 h-6" />
               </div>
               <div>
                 <span className={`font-bold text-xl tracking-tight ${textMain}`}>DataDrop</span>
-                <span className="text-xs font-medium text-indigo-500 dark:text-indigo-300 bg-indigo-500/10 dark:bg-indigo-500/20 px-2.5 py-0.5 rounded-full block mt-1">Offline-first APK</span>
+                <span className="text-xs font-medium text-indigo-500 dark:text-indigo-300 bg-indigo-500/10 dark:bg-indigo-500/20 px-2.5 py-0.5 rounded-full block mt-1">
+                  Offline-first APK
+                </span>
               </div>
-            </div>
+            </motion.div>
             <div className="flex items-center gap-3">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={toggleDark}
-                className={`p-2 rounded-xl transition-all ${isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-slate-800 text-yellow-400 hover:bg-slate-700'}`}
+                className={`p-2.5 rounded-xl transition-all ${isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-slate-800 text-yellow-400 hover:bg-slate-700'}`}
                 aria-label="Toggle dark mode"
               >
                 {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
+              </motion.button>
               <a
                 href={APK_DOWNLOAD_URL}
-                className={`px-4 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center gap-2 shadow-lg ${isLight ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/40' : 'bg-indigo-500 text-white hover:bg-indigo-600 shadow-indigo-500/50'}`}
+                className="px-4 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center gap-2 shadow-lg btn-gradient"
               >
                 <Smartphone className="w-4 h-4" />
                 Get the APK
@@ -399,19 +401,19 @@ const LandingSection = (props: LandingSectionProps) => {
       </motion.div>
 
       <div className="flex-1 relative overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-200/40 rounded-full blur-3xl -translate-y-1/3 dark:bg-indigo-900/30" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-200/40 rounded-full blur-3xl -translate-y-1/3 dark:bg-purple-900/30" />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-200/40 rounded-full blur-[120px] -translate-y-1/3 dark:bg-indigo-900/30" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-200/40 rounded-full blur-[120px] -translate-y-1/3 dark:bg-purple-900/30" />
 
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-24 relative z-10"
         >
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            transition={{ delay: 0.1, duration: 0.5, ease: 'easeOut' }}
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100/80 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-semibold mb-8 uppercase tracking-wider backdrop-blur-sm border border-white/20 dark:border-indigo-500/30"
           >
             <span className="relative flex h-1.5 w-1.5">
@@ -424,7 +426,7 @@ const LandingSection = (props: LandingSectionProps) => {
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.2, duration: 0.6, ease: 'easeOut' }}
             className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight"
           >
             <span className={`${textMain} dark:text-slate-100`}>Clean your data</span><br />
@@ -436,7 +438,7 @@ const LandingSection = (props: LandingSectionProps) => {
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.3, duration: 0.5, ease: 'easeOut' }}
             className="text-lg md:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mb-12 leading-relaxed"
           >
             Upload a CSV, JSON, or Excel file to instantly inspect, clean, and visualize it — right
@@ -447,10 +449,14 @@ const LandingSection = (props: LandingSectionProps) => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.4, duration: 0.5, ease: 'easeOut' }}
             className="flex flex-col sm:flex-row gap-4 justify-center mb-12"
           >
-            <label className={`px-8 py-4 rounded-2xl font-semibold text-lg transition-all shadow-xl cursor-pointer flex items-center justify-center gap-2 ${isParsing ? 'bg-white/30 text-slate-400 border-white/20 opacity-60 cursor-not-allowed dark:bg-slate-800/30 dark:border-slate-700' : isLight ? 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:-translate-y-1' : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700 hover:text-white hover:-translate-y-1'}`}>
+            <motion.label
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className={`px-8 py-4 rounded-2xl font-semibold text-lg transition-all shadow-xl cursor-pointer flex items-center justify-center gap-2 ${isParsing ? 'bg-white/30 text-slate-400 border-white/20 opacity-60 cursor-not-allowed dark:bg-slate-800/30 dark:border-slate-700' : isLight ? 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:-translate-y-1' : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700 hover:text-white hover:-translate-y-1'}`}
+            >
               <Download className="w-5 h-5" />
               Choose file (CSV / JSON / Excel)
               <input
@@ -459,8 +465,10 @@ const LandingSection = (props: LandingSectionProps) => {
                 className="hidden"
                 onChange={(e) => handleFile(e.target.files?.[0] as File)}
               />
-            </label>
-            <button
+            </motion.label>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={loadSampleDataset}
               disabled={isParsing}
               className={`px-8 py-4 rounded-2xl font-semibold text-lg transition-all flex items-center justify-center gap-2 shadow-lg ${isParsing ? 'bg-white/30 text-slate-400 border-white/20 opacity-60 cursor-not-allowed dark:bg-slate-800/30 dark:border-slate-700' : isLight ? 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:-translate-y-1' : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700 hover:text-white hover:-translate-y-1'}`}
@@ -476,14 +484,14 @@ const LandingSection = (props: LandingSectionProps) => {
                   Try sample data
                 </>
               )}
-            </button>
+            </motion.button>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="rounded-3xl overflow-hidden flex flex-col md:flex-row border border-white/20 dark:border-white/10 shadow-2xl"
+            transition={{ delay: 0.5, duration: 0.6, ease: 'easeOut' }}
+            className="rounded-3xl overflow-hidden border border-white/20 dark:border-white/10 shadow-2xl glass-card"
           >
             <div className="p-8 md:p-12 flex-1">
               <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-white">Get the mobile app</h2>
@@ -491,10 +499,12 @@ const LandingSection = (props: LandingSectionProps) => {
                 Install DataDrop on Android to inspect files straight from your downloads — no
                 internet needed.
               </p>
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={handleApkDownload}
                 disabled={isDownloading}
-                className={`w-full py-4 rounded-2xl font-bold text-lg transition-all shadow-xl flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed ${isDownloading ? 'bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 shadow-indigo-500/50 hover:shadow-indigo-500/80 hover:-translate-y-1'}`}
+                className="w-full py-4 rounded-2xl font-bold text-lg transition-all shadow-xl flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed btn-gradient"
               >
                 {isDownloading ? (
                   <>
@@ -507,22 +517,25 @@ const LandingSection = (props: LandingSectionProps) => {
                     Download DataDrop.apk (4.23 MB)
                   </>
                 )}
-              </button>
+              </motion.button>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
                 Sideload on Android · Enable "Install unknown apps" for your browser
               </p>
             </div>
             <div className="hidden md:flex items-center justify-center p-8">
-              <div className="w-48 h-48 rounded-2xl bg-indigo-50/40 dark:bg-indigo-900/30 border border-indigo-100/30 dark:border-indigo-500/30 flex items-center justify-center shadow-lg shadow-indigo-200/30 dark:shadow-indigo-900/30">
+              <motion.div
+                whileHover={{ scale: 1.03 }}
+                className="w-48 h-48 rounded-2xl bg-indigo-50/40 dark:bg-indigo-900/30 border border-indigo-100/30 dark:border-indigo-500/30 flex items-center justify-center shadow-lg shadow-indigo-200/30 dark:shadow-indigo-900/30"
+              >
                 <Smartphone className="w-24 h-24 text-indigo-500 dark:text-indigo-400" />
-              </div>
+              </motion.div>
             </div>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.6, duration: 0.6, ease: 'easeOut' }}
             className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6"
           >
             {[
@@ -551,8 +564,9 @@ const LandingSection = (props: LandingSectionProps) => {
                   key={f.title}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.7 }}
-                  className="p-6 rounded-2xl transition-all hover:-translate-y-2 shadow-sm border"
+                  transition={{ delay: 0.7, duration: 0.5, ease: 'easeOut' }}
+                  whileHover={{ y: -4 }}
+                  className="p-6 rounded-2xl transition-all hover:-translate-y-2 shadow-sm border glass-card"
                 >
                   <div className={`w-12 h-12 rounded-xl ${f.color} flex items-center justify-center mb-6 shadow-lg`}>
                     <Icon className="w-6 h-6" />
@@ -598,48 +612,51 @@ const LoadedSection = (props: LoadedSectionProps) => {
     isLight,
     textMain,
     textMuted,
-  } = props;
+  } = props
 
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className={`sticky top-0 z-40 border-b border-white/10 bg-white/10 backdrop-blur-xl transition-colors duration-300 ${isLight ? 'bg-white/80' : 'bg-slate-900/80'}`}
+        exit={{ opacity: 0 }}
+        className={`sticky top-0 z-40 border-b border-white/10 backdrop-blur-xl transition-colors duration-300 ${isLight ? 'bg-white/80' : 'bg-slate-900/80'}`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={reset}
-                className="p-2 rounded-xl transition-all hover:bg-white/20 dark:hover:bg-slate-800"
-                title="New dataset"
-              >
-                <RotateCw className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-              </button>
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/40">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className={`font-bold text-sm ${textMain}`}>{dataset.name}</span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
-                    {dataset.rows.length} rows × {dataset.columns.length} cols
-                  </span>
-                </div>
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={reset}
+              className="p-2 rounded-xl transition-all hover:bg-white/20 dark:hover:bg-slate-800"
+              title="New dataset"
+            >
+              <RotateCw className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+            </motion.div>
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/40">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <span className={`font-bold text-sm ${textMain}`}>{dataset.name}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  {dataset.rows.length} rows × {dataset.columns.length} cols
+                </span>
               </div>
             </div>
             <div className="flex gap-2 flex-wrap items-center">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => {}}
                 className={`px-3 py-2 rounded-xl transition-all text-sm font-medium ${isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900' : 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white'}`}
               >
                 Back to upload
-              </button>
+              </motion.button>
               <a
                 href={URL.createObjectURL(new Blob([unparse(currentRows)], { type: 'text/csv' }))}
                 download={`cleaned-${dataset.name.replace(/\.[^/.]+$/, '')}.csv`}
-                className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all shadow-md flex items-center gap-2 ${isLight ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                className="px-4 py-2 rounded-xl font-semibold text-sm transition-all shadow-md flex items-center gap-2 btn-gradient"
               >
                 <Download className="w-4 h-4" />
                 Export CSV
@@ -647,18 +664,20 @@ const LoadedSection = (props: LoadedSectionProps) => {
               <a
                 href={URL.createObjectURL(new Blob([JSON.stringify(currentRows, null, 2)], { type: 'application/json' }))}
                 download={`cleaned-${dataset.name.replace(/\.[^/.]+$/, '')}.json`}
-                className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all shadow-md shadow-indigo-500/30 flex items-center gap-2 ${isLight ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-indigo-500 text-white hover:bg-indigo-600'}`}
+                className="px-4 py-2 rounded-xl font-semibold text-sm transition-all shadow-md shadow-indigo-500/30 flex items-center gap-2 btn-gradient"
               >
                 <Download className="w-4 h-4" />
                 Export JSON
               </a>
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={toggleDark}
                 className="p-2 rounded-xl transition-all hover:bg-white/20 dark:hover:bg-slate-800"
                 aria-label="Toggle dark mode"
               >
                 {darkMode ? <Sun className="w-5 h-5 text-slate-600 dark:text-slate-300" /> : <Moon className="w-5 h-5 text-slate-600 dark:text-slate-300" />}
-              </button>
+              </motion.button>
             </div>
           </div>
         </div>
@@ -668,6 +687,7 @@ const LoadedSection = (props: LoadedSectionProps) => {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4"
         >
           <div className={`rounded-2xl p-5 shadow-sm border transition-all ${isLight ? 'bg-red-50 border-red-200' : 'bg-red-900/20 border-red-800/50'}`}>
@@ -692,53 +712,54 @@ const LoadedSection = (props: LoadedSectionProps) => {
             <motion.button
               key={t.key}
               whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileTap={{ scale: 0.96 }}
               onClick={() => setActiveTab(t.key)}
-              className={`px-4 py-2 rounded-2xl text-sm font-medium transition-all shadow-sm ${
-                activeTab === t.key
-                  ? isLight ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/40' : 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/60'
-                  : isLight ? 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'
-              }`}
+              className={`px-4 py-2 rounded-2xl text-sm font-medium transition-all shadow-sm ${activeTab === t.key ? isLight ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/40' : 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/60' : isLight ? 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
             >
               {t.label}
             </motion.button>
           ))}
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`rounded-3xl overflow-hidden border border-white/20 dark:border-white/10 shadow-2xl transition-all ${isLight ? 'bg-white/90' : 'bg-slate-900/90'}`}
-        >
-          {activeTab === 'parser' && (
-            <div className="p-8 border-b border-white/10 dark:border-white/10">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className={`text-lg font-bold ${textMain} mb-1`}>Dataset preview</h2>
-                  <p className={`text-sm ${textMuted}`}>
-                    First 50 rows shown. Use Clean to transform, then Charts or Summary to analyze.
-                  </p>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className={`rounded-3xl overflow-hidden border border-white/20 dark:border-white/10 shadow-2xl glass-card`}
+          >
+            {activeTab === 'parser' && (
+              <div className="p-8 border-b border-white/10 dark:border-white/10">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className={`text-lg font-bold ${textMain} mb-1`}>Dataset preview</h2>
+                    <p className={`text-sm ${textMuted}`}>
+                      First 50 rows shown. Use Clean to transform, then Charts or Summary to analyze.
+                    </p>
+                  </div>
                 </div>
+                <DataTable columns={columns} rows={currentRows} maxRows={50} isLight={isLight} textMain={textMain} textMuted={textMuted} inputBg="" inputBorder="" />
               </div>
-              <DataTable columns={columns} rows={currentRows} maxRows={50} isLight={isLight} textMain={textMain} textMuted={textMuted} inputBg="" inputBorder="" />
-            </div>
-          )}
-          {activeTab === 'clean' && (
-            <DataCleaner dataset={dataset} onClean={handleClean} isLight={isLight} textMain={textMain} textMuted={textMuted} inputBg="" inputBorder="" />
-          )}
-          {activeTab === 'visualize' && (
-            <ChartStudio columns={columns} rows={currentRows} numericCols={numericCols} stats={stats} onExportPng={() => {}} isLight={isLight} textMain={textMain} textMuted={textMuted} inputBg="" inputBorder="" />
-          )}
-          {activeTab === 'summary' && (
-            <SummaryCards columns={columns} rows={currentRows} stats={stats} isLight={isLight} textMain={textMain} textMuted={textMuted} inputBg="" inputBorder="" />
-          )}
-        </motion.div>
+            )}
+            {activeTab === 'clean' && (
+              <DataCleaner dataset={dataset} onClean={handleClean} isLight={isLight} textMain={textMain} textMuted={textMuted} inputBg="" inputBorder="" />
+            )}
+            {activeTab === 'visualize' && (
+              <ChartStudio columns={columns} rows={currentRows} numericCols={numericCols} stats={stats} onExportPng={() => {}} isLight={isLight} textMain={textMain} textMuted={textMuted} inputBg="" inputBorder="" />
+            )}
+            {activeTab === 'summary' && (
+              <SummaryCards columns={columns} rows={currentRows} stats={stats} isLight={isLight} textMain={textMain} textMuted={textMuted} inputBg="" inputBorder="" />
+            )}
+          </motion.div>
+        </AnimatePresence>
 
         {chartPng && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-8 rounded-3xl overflow-hidden border border-white/20 dark:border-white/10 shadow-2xl"
+            className="mt-8 rounded-3xl overflow-hidden border border-white/20 dark:border-white/10 shadow-2xl glass-card"
           >
             <div className="p-6 border-b border-white/20 dark:border-white/10 flex items-center justify-between">
               <h2 className={`text-lg font-bold ${textMain}`}>Chart export</h2>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, useCallback, useMemo } from 'react'
+import { motion } from 'framer-motion'
 import {
   Bar,
   Line,
@@ -76,14 +77,12 @@ export function ChartStudio({
         y: r[yCol ?? ''],
       })).filter((p) => p.x !== null && p.x !== undefined && p.x !== '' && p.y !== null && p.y !== undefined && p.y !== '')
       return {
-        datasets: [
-          {
-            label: `${yCol} vs ${xCol}`,
-            data: points as { x: number | string; y: number | string }[],
-            backgroundColor: chartColor,
-            borderColor: chartColor,
-          },
-        ],
+        datasets: [{
+          label: `${yCol} vs ${xCol}`,
+          data: points as { x: number | string; y: number | string }[],
+          backgroundColor: chartColor,
+          borderColor: chartColor,
+        }],
       }
     }
 
@@ -109,17 +108,15 @@ export function ChartStudio({
 
     return {
       labels,
-      datasets: [
-        {
-          label: yCol ?? 'Value',
-          data: yValues,
-          backgroundColor: chartColor,
-          borderColor: chartColor,
-          borderWidth: 2,
-          fill: chartType === 'line',
-          tension: chartType === 'line' ? 0.3 : 0,
-        },
-      ],
+      datasets: [{
+        label: yCol ?? 'Value',
+        data: yValues,
+        backgroundColor: chartColor,
+        borderColor: chartColor,
+        borderWidth: 2,
+        fill: chartType === 'line',
+        tension: chartType === 'line' ? 0.3 : 0,
+      }],
     }
   }, [rows, chartType, xCol, yCol, numericY, xValues, yValues, chartColor])
 
@@ -166,7 +163,11 @@ export function ChartStudio({
     <div className="p-6">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-4 space-y-6">
-          <div className={`rounded-2xl p-5 shadow-xl border border-white/20 dark:border-white/10 transition-all ${isLight ? 'bg-white/90' : 'bg-slate-900/80'}`}>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`rounded-2xl p-5 shadow-xl border border-white/20 dark:border-white/10 glass-card`}
+          >
             <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textMain}`}>
               <BarChart3 className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
               Chart settings
@@ -181,19 +182,15 @@ export function ChartStudio({
                     { value: 'scatter' as ChartType, label: 'Scatter' },
                     { value: 'distribution' as ChartType, label: 'Distribution' },
                   ].map((opt) => (
-                    <button
+                    <motion.button
                       key={opt.value}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.96 }}
                       onClick={() => setChartType(opt.value)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
-                        chartType === opt.value
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-500/40'
-                          : isLight
-                          ? 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                          : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-slate-600 hover:bg-slate-700'
-                      }`}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${chartType === opt.value ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-500/40' : isLight ? 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50' : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-slate-600 hover:bg-slate-700'}`}
                     >
                       {opt.label}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </div>
@@ -205,7 +202,7 @@ export function ChartStudio({
                   value={chartTitle}
                   onChange={(e) => setChartTitle(e.target.value)}
                   placeholder="My Chart"
-                  className={`w-full px-3 py-2 text-sm rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-sm ${isLight ? `border-slate-300 bg-white text-slate-900` : `border-slate-700 bg-slate-800 text-slate-100`} ${inputBorder}`}
+                  className={`w-full px-3 py-2 text-sm rounded-md focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200 text-sm ${isLight ? `border-slate-300 bg-white text-slate-900` : `border-slate-700 bg-slate-800 text-slate-100`} ${inputBorder}`}
                 />
               </div>
 
@@ -227,7 +224,7 @@ export function ChartStudio({
                 <select
                   value={xCol ?? ''}
                   onChange={(e) => setXCol(e.target.value || null)}
-                  className={`w-full px-3 py-2 text-sm rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-sm ${isLight ? `border-slate-300 bg-white text-slate-900` : `border-slate-700 bg-slate-800 text-slate-100`} ${inputBorder}`}
+                  className={`w-full px-3 py-2 text-sm rounded-md focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200 text-sm ${isLight ? `border-slate-300 bg-white text-slate-900` : `border-slate-700 bg-slate-800 text-slate-100`} ${inputBorder}`}
                 >
                   <option value="">Select column</option>
                   {columns.map((c) => (
@@ -241,7 +238,7 @@ export function ChartStudio({
                 <select
                   value={yCol ?? ''}
                   onChange={(e) => setYCol(e.target.value || null)}
-                  className={`w-full px-3 py-2 text-sm rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-sm ${isLight ? `border-slate-300 bg-white text-slate-900` : `border-slate-700 bg-slate-800 text-slate-100`} ${inputBorder}`}
+                  className={`w-full px-3 py-2 text-sm rounded-md focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200 text-sm ${isLight ? `border-slate-300 bg-white text-slate-900` : `border-slate-700 bg-slate-800 text-slate-100`} ${inputBorder}`}
                 >
                   <option value="">Select column</option>
                   {numericCols.map((c) => (
@@ -253,16 +250,28 @@ export function ChartStudio({
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className={`rounded-2xl p-5 shadow-xl border border-white/20 dark:border-white/10 transition-all ${isLight ? 'bg-white/90' : 'bg-slate-900/80'}`}>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 }}
+            className={`rounded-2xl p-5 shadow-xl border border-white/20 dark:border-white/10 glass-card`}
+          >
             <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textMain}`}>
               <LayoutGrid className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
               Column stats
             </h2>
             <div className="space-y-3">
               {stats.slice(0, 6).map((s) => (
-                <div key={s.name} className={`border border-white/10 dark:border-white/10 rounded-lg p-3 transition-colors ${isLight ? 'bg-white/50' : 'bg-slate-800/50'}`}>
+                <motion.div
+                  key={s.name}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: s.name.length * 0.005 }}
+                  whileHover={{ backgroundColor: isLight ? '#f8fafc' : '#1e293b' }}
+                  className={`border border-white/10 dark:border-white/10 rounded-lg p-3 transition-colors duration-200 ${isLight ? 'bg-white/50' : 'bg-slate-800/50'}`}
+                >
                   <div className="flex justify-between mb-1">
                     <span className={`text-sm font-medium ${textMain} truncate`}>{s.name}</span>
                     <span className={`text-xs font-mono text-slate-500 dark:text-slate-400`}>{s.type}</span>
@@ -289,14 +298,19 @@ export function ChartStudio({
                       <span className={`font-mono text-slate-600 dark:text-slate-300`}>{s.unique}</span>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
-          </div>
+          </motion.div>
         </div>
 
         <div className="lg:col-span-8">
-          <div className={`rounded-2xl overflow-hidden border border-white/20 dark:border-white/10 shadow-xl transition-all ${isLight ? 'bg-white/90' : 'bg-slate-900/80'}`} ref={chartRef}>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`rounded-2xl overflow-hidden border border-white/20 dark:border-white/10 shadow-2xl glass-card`}
+            ref={chartRef}
+          >
             {canChart ? (
               <div className="relative h-[400px] lg:h-[500px] w-full">
                 <ChartComponent
@@ -311,44 +325,43 @@ export function ChartStudio({
               </div>
             )}
             <div className="absolute top-4 right-4 flex gap-2">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={handleExport}
                 disabled={!canChart}
-                className={`p-2 rounded-lg shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                  isLight
-                    ? 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                    : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
-                }`}
+                className={`p-2 rounded-lg shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed ${isLight ? 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50' : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'}`}
                 title="Export PNG"
               >
                 <Download className="w-5 h-5" />
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => {}}
-                className={`p-2 rounded-lg shadow-md transition-all ${
-                  isLight
-                    ? 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                    : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
-                }`}
+                className={`p-2 rounded-lg shadow-md transition-all ${isLight ? 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50' : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'}`}
                 title="Copy image"
               >
                 <ImageIcon className="w-5 h-5" />
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => {}}
-                className={`p-2 rounded-lg shadow-md transition-all ${
-                  isLight
-                    ? 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                    : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
-                }`}
+                className={`p-2 rounded-lg shadow-md transition-all ${isLight ? 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50' : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'}`}
                 title="Reset"
               >
                 <X className="w-5 h-5" />
-              </button>
+              </motion.button>
             </div>
-          </div>
+          </motion.div>
           {canChart && numericCols.length >= 2 && xCol && yCol && numericX.length > 1 && numericY.length > 1 && (
-            <div className="mt-4 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-white/10 dark:border-white/10 p-4 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.16 }}
+              className="mt-4 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-white/10 dark:border-white/10 p-4 backdrop-blur-sm glass-panel-soft"
+            >
               <h3 className={`text-sm font-semibold ${textMain} mb-2`}>Correlation</h3>
               <p className={`text-sm ${textMuted}`}>
                 Pearson correlation between <span className={`font-mono text-indigo-600 dark:text-indigo-400`}>{xCol}</span> and{' '}
@@ -357,7 +370,7 @@ export function ChartStudio({
                   {correlation(numericX, numericY).toFixed(3)}
                 </span>
               </p>
-            </div>
+            </motion.div>
           )}
         </div>
       </div>

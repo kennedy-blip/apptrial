@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { Wand2, Scissors, LayoutGrid, ArrowRight } from 'lucide-react'
 import { ParsedDataset } from '@/app/page'
 import { cleanRows } from '@/lib/stats'
@@ -45,104 +46,108 @@ export function DataCleaner({
 
   return (
     <div className="p-6">
-      <div className="grid gap-6 mb-6">
-        <div className={`rounded-2xl p-5 shadow-xl border border-white/20 dark:border-white/10 transition-all ${isLight ? 'bg-white/90' : 'bg-slate-900/80'}`}>
-          <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textMain}`}>
-            <Wand2 className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
-            Cleaning actions
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <label className="flex items-center gap-3 cursor-pointer group transition-colors">
-              <input
-                type="checkbox"
-                checked={actions.deduplicate}
-                onChange={(e) =>
-                  setActions((a) => ({ ...a, deduplicate: e.target.checked }))
-                }
-                className="rounded text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500"
-              />
-              <span className={`text-sm transition-colors group-hover:text-indigo-400 ${
-                isLight ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300'
-              }`}>
-                Remove duplicate rows
-              </span>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer group transition-colors">
-              <input
-                type="checkbox"
-                checked={actions.trimWhitespace}
-                onChange={(e) =>
-                  setActions((a) => ({ ...a, trimWhitespace: e.target.checked }))
-                }
-                className="rounded text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500"
-              />
-              <span className={`text-sm transition-colors group-hover:text-indigo-400 ${
-                isLight ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300'
-              }`}>
-                Trim whitespace
-              </span>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer group transition-colors">
-              <input
-                type="checkbox"
-                checked={actions.dropNulls}
-                onChange={(e) => setActions((a) => ({ ...a, dropNulls: e.target.checked }))}
-                className="rounded text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500"
-              />
-              <span className={`text-sm transition-colors group-hover:text-indigo-400 ${
-                isLight ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300'
-              }`}>
-                Drop empty rows
-              </span>
-            </label>
-            <div className="flex items-center gap-3">
-              <span className={`text-sm transition-colors ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                Fill missing with:
-              </span>
-              <input
-                type="text"
-                value={actions.fillMissing}
-                onChange={(e) => setActions((a) => ({ ...a, fillMissing: e.target.value }))}
-                placeholder="e.g. 0 / N/A"
-                className={`flex-1 px-3 py-2 text-sm rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-sm ${isLight ? `border-slate-300 bg-white text-slate-900` : `border-slate-700 bg-slate-800 text-slate-100`} ${inputBorder}`}
-              />
-            </div>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`rounded-2xl p-5 shadow-xl border border-white/20 dark:border-white/10 glass-card`}
+      >
+        <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textMain}`}>
+          <Wand2 className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+          Cleaning actions
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label className="flex items-center gap-3 cursor-pointer group transition-all duration-200">
+            <input
+              type="checkbox"
+              checked={actions.deduplicate}
+              onChange={(e) => setActions((a) => ({ ...a, deduplicate: e.target.checked }))}
+              className="rounded text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500"
+            />
+            <span className={`text-sm transition-colors duration-200 group-hover:text-indigo-400 ${isLight ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300'}`}>
+              Remove duplicate rows
+            </span>
+          </label>
+          <label className="flex items-center gap-3 cursor-pointer group transition-all duration-200">
+            <input
+              type="checkbox"
+              checked={actions.trimWhitespace}
+              onChange={(e) => setActions((a) => ({ ...a, trimWhitespace: e.target.checked }))}
+              className="rounded text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500"
+            />
+            <span className={`text-sm transition-colors duration-200 group-hover:text-indigo-400 ${isLight ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300'}`}>
+              Trim whitespace
+            </span>
+          </label>
+          <label className="flex items-center gap-3 cursor-pointer group transition-all duration-200">
+            <input
+              type="checkbox"
+              checked={actions.dropNulls}
+              onChange={(e) => setActions((a) => ({ ...a, dropNulls: e.target.checked }))}
+              className="rounded text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500"
+            />
+            <span className={`text-sm transition-colors duration-200 group-hover:text-indigo-400 ${isLight ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300'}`}>
+              Drop empty rows
+            </span>
+          </label>
+          <div className="flex items-center gap-3">
+            <span className={`text-sm transition-colors ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+              Fill missing with:
+            </span>
+            <input
+              type="text"
+              value={actions.fillMissing}
+              onChange={(e) => setActions((a) => ({ ...a, fillMissing: e.target.value }))}
+              placeholder="e.g. 0 / N/A"
+              className={`flex-1 px-3 py-2 text-sm rounded-md focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200 text-sm ${isLight ? `border-slate-300 bg-white text-slate-900` : `border-slate-700 bg-slate-800 text-slate-100`} ${inputBorder}`}
+            />
           </div>
         </div>
+      </motion.div>
 
-        <div className={`rounded-2xl p-5 shadow-xl border border-white/20 dark:border-white/10 transition-all ${isLight ? 'bg-white/90' : 'bg-slate-900/80'}`}>
-          <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textMain}`}>
-            <LayoutGrid className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
-            Columns to keep
-          </h2>
-          <p className={`text-xs mb-3 ${textMuted}`}>Uncheck columns to remove them from the cleaned data.</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {columns.map((col) => (
-              <label key={col} className="flex items-center gap-2 cursor-pointer group transition-colors">
-                <input
-                  type="checkbox"
-                  checked={actions.columnsToKeep.includes(col)}
-                  onChange={(e) =>
-                    setActions((a) => ({
-                      ...a,
-                      columnsToKeep: e.target.checked
-                        ? [...a.columnsToKeep, col]
-                        : a.columnsToKeep.filter((c) => c !== col),
-                    }))}
-                  className="rounded text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500"
-                />
-                <span className={`text-xs transition-colors group-hover:text-indigo-400 truncate ${
-                  isLight ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300'
-                }`}>
-                  {col}
-                </span>
-              </label>
-            ))}
-          </div>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.08 }}
+        className={`rounded-2xl p-5 shadow-xl border border-white/20 dark:border-white/10 glass-card`}
+      >
+        <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textMain}`}>
+          <LayoutGrid className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+          Columns to keep
+        </h2>
+        <p className={`text-xs mb-3 ${textMuted}`}>Uncheck columns to remove them from the cleaned data.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+          {columns.map((col) => (
+            <motion.label
+              key={col}
+              whileHover={{ scale: 1.02 }}
+              className="flex items-center gap-2 cursor-pointer group transition-colors"
+            >
+              <input
+                type="checkbox"
+                checked={actions.columnsToKeep.includes(col)}
+                onChange={(e) =>
+                  setActions((a) => ({
+                    ...a,
+                    columnsToKeep: e.target.checked
+                      ? [...a.columnsToKeep, col]
+                      : a.columnsToKeep.filter((c) => c !== col),
+                  }))}
+                className="rounded text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500"
+              />
+              <span className={`text-xs transition-colors group-hover:text-indigo-400 truncate ${isLight ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300'}`}>
+                {col}
+              </span>
+            </motion.label>
+          ))}
         </div>
-      </div>
+      </motion.div>
 
-      <div className={`rounded-2xl p-5 shadow-xl border border-white/20 dark:border-white/10 transition-all ${isLight ? 'bg-white/90' : 'bg-slate-900/80'}`}>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.16 }}
+        className={`rounded-2xl p-5 shadow-xl border border-white/20 dark:border-white/10 glass-card`}
+      >
         <div className="flex items-center justify-between mb-4">
           <h2 className={`text-lg font-semibold flex items-center gap-2 ${textMain}`}>
             <Scissors className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
@@ -168,11 +173,15 @@ export function DataCleaner({
             </thead>
             <tbody>
               {cleaned.slice(0, 20).map((row, i) => (
-                <tr key={i} className={`border-b border-white/10 dark:border-white/10 transition-colors hover:${
-                  isLight ? 'bg-slate-50' : 'bg-slate-800/50'
-                }`}>
+                <motion.tr
+                  key={i}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.01, duration: 0.3 }}
+                  className={`border-b border-white/10 dark:border-white/10 transition-colors duration-200 ${isLight ? 'bg-white/60' : 'bg-slate-800/40'}`}
+                >
                   <td className="px-3 py-1 text-center text-xs font-mono w-12">
-                    <span className={`text-slate-400 dark:text-slate-500`}>{i + 1}</span>
+                    <span className="text-slate-400 dark:text-slate-500">{i + 1}</span>
                   </td>
                   {actions.columnsToKeep.map((col) => {
                     const val = row[col]
@@ -180,20 +189,18 @@ export function DataCleaner({
                     return (
                       <td
                         key={col}
-                        className={`px-3 py-1 text-xs transition-colors ${empty ? 'text-slate-400 italic dark:text-slate-500' : 'text-slate-600 dark:text-slate-300'}`}
+                        className={`px-3 py-1 text-xs transition-colors duration-200 ${empty ? 'text-slate-400 italic dark:text-slate-500' : 'text-slate-600 dark:text-slate-300'}`}
                       >
                         {empty ? '—' : String(val)}
                       </td>
                     )
                   })}
-                </tr>
+                </motion.tr>
               ))}
               {cleaned.length > 20 && (
                 <tr>
                   <td colSpan={actions.columnsToKeep.length + 1} className="px-3 py-3 text-center text-xs">
-                    <span className={`text-slate-500 dark:text-slate-400`}>
-                      …and {cleaned.length - 20} more rows
-                    </span>
+                    <span className="text-slate-500 dark:text-slate-400">…and {cleaned.length - 20} more rows</span>
                   </td>
                 </tr>
               )}
@@ -202,22 +209,20 @@ export function DataCleaner({
         </div>
 
         {hasChanges ? (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => onClean(actions)}
-            className={`mt-4 w-full py-3 rounded-xl font-bold text-lg transition-all shadow-lg flex items-center justify-center gap-2 ${
-              isLight
-                ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/40 hover:-translate-y-0.5'
-                : 'bg-indigo-500 text-white hover:bg-indigo-600 shadow-indigo-500/50 hover:-translate-y-0.5'
-            }`}
+            className={`mt-4 w-full py-3 rounded-xl font-bold text-lg transition-all shadow-lg flex items-center justify-center gap-2 ${isLight ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/40 hover:-translate-y-0.5' : 'bg-indigo-500 text-white hover:bg-indigo-600 shadow-indigo-500/50 hover:-translate-y-0.5'}`}
           >
             <ArrowRight className="w-4 h-4" /> Apply cleaning
-          </button>
+          </motion.button>
         ) : (
           <div className={`mt-4 text-xs text-center transition-colors ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>
             No cleaning actions selected.
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   )
 }

@@ -1,5 +1,7 @@
 'use client'
 
+import { motion } from 'framer-motion'
+
 export interface DataTableProps {
   columns: string[]
   rows: Record<string, unknown>[]
@@ -25,30 +27,32 @@ export function DataTable({
   const hasMore = rows.length > maxRows
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-white/20 dark:border-white/10 shadow-xl transition-all">
+    <div className="overflow-x-auto rounded-2xl border border-white/20 dark:border-white/10 shadow-2xl glass-card">
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className={`border-b border-white/10 dark:border-white/10 ${isLight ? 'bg-slate-50/50' : 'bg-slate-900/50'}`}>
             <th className="w-12 px-3 py-3 text-center text-xs font-medium tracking-wider">
-              <span className={`text-slate-500 dark:text-slate-400 uppercase`}>#</span>
+              <span className="text-slate-500 dark:text-slate-400 uppercase">#</span>
             </th>
             {columns.map((col) => (
-              <th
-                key={col}
-                className="px-4 py-3 text-left text-xs font-medium tracking-wider"
-              >
-                <span className={`text-slate-500 dark:text-slate-400 uppercase`}>{col}</span>
+              <th key={col} className="px-4 py-3 text-left text-xs font-medium tracking-wider">
+                <span className="text-slate-500 dark:text-slate-400 uppercase">{col}</span>
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {displayRows.map((row, i) => (
-            <tr key={i} className={`border-b border-white/10 dark:border-white/10 transition-colors hover:${
-              isLight ? 'bg-slate-50' : 'bg-slate-800/50'
-            }`}>
+            <motion.tr
+              key={i}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.01, duration: 0.3, ease: 'easeOut' }}
+              whileHover={{ backgroundColor: isLight ? '#f8fafc' : '#1e293b' }}
+              className={`border-b border-white/10 dark:border-white/10 transition-colors duration-200 ${isLight ? 'bg-white/60' : 'bg-slate-800/40'}`}
+            >
               <td className="px-3 py-2 text-center text-xs font-mono w-12">
-                <span className={`text-slate-400 dark:text-slate-500 font-mono`}>{i + 1}</span>
+                <span className="text-slate-400 dark:text-slate-500 font-mono">{i + 1}</span>
               </td>
               {columns.map((col) => {
                 const val = row[col]
@@ -59,19 +63,17 @@ export function DataTable({
                 return (
                   <td
                     key={col}
-                    className={`px-4 py-2 text-xs truncate max-w-32 transition-colors ${
-                      empty
-                        ? 'text-slate-400 italic dark:text-slate-500'
-                        : isNum
-                        ? 'text-right font-mono text-slate-600 dark:text-slate-300'
-                        : 'text-slate-600 dark:text-slate-300'
-                    }`}
+                    className={`px-4 py-2 text-xs truncate max-w-32 transition-colors duration-200 ${empty
+                      ? 'text-slate-400 italic dark:text-slate-500'
+                      : isNum
+                      ? 'text-right font-mono text-slate-600 dark:text-slate-300'
+                      : 'text-slate-600 dark:text-slate-300'}`}
                   >
                     {empty ? '—' : String(val)}
                   </td>
                 )
               })}
-            </tr>
+            </motion.tr>
           ))}
         </tbody>
       </table>
