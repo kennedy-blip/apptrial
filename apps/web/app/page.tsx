@@ -257,6 +257,14 @@ export default function Home() {
                   }}
                 />
               </label>
+              <a
+                href="https://github.com/kennedy-blip/apptrial/releases/download/AppTrial-latest/AppTrial.apk"
+                className="px-8 py-4 bg-slate-900 text-white rounded-xl font-semibold text-lg hover:bg-slate-800 transition inline-flex items-center justify-center"
+                aria-label="Download the latest DataDrop Android APK"
+              >
+                <Download className="w-5 h-5 mr-2" />
+                Download Android APK
+              </a>
               <button
                 onClick={loadSampleDataset}
                 disabled={isParsing}
