@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { parse as parseCsv, unparse } from 'papaparse'
 import * as XLSX from 'xlsx'
 import {
@@ -11,7 +11,12 @@ import {
   RotateCw,
   Smartphone,
   Zap,
+  Moon,
+  Sun,
 } from 'lucide-react'
+import {
+  motion,
+} from 'framer-motion'
 import { DataTable } from '@/components/data-table'
 import { DataCleaner } from '@/components/data-cleaner'
 import { ChartStudio } from '@/components/chart-studio'
@@ -55,7 +60,50 @@ function setDatasetFromParsed(
   setActiveTab('clean')
 }
 
+interface LandingSectionProps {
+  handleFile: (file: File) => void
+  loadSampleDataset: () => void
+  handleApkDownload: () => void
+  toggleDark: () => void
+  darkMode: boolean
+  isParsing: boolean
+  isDownloading: boolean
+  reset: () => void
+  isLight: boolean
+  cardBg: string
+  cardBorder: string
+  textMain: string
+  textMuted: string
+  inputBg: string
+  inputBorder: string
+}
+
+interface LoadedSectionProps {
+  dataset: ParsedDataset
+  currentRows: Row[]
+  columns: string[]
+  stats: ColumnStats[]
+  numericCols: string[]
+  activeTab: Tab
+  setActiveTab: (t: Tab) => void
+  tabs: { key: Tab; label: string }[]
+  parseError: string | null
+  chartPng: string | null
+  reset: () => void
+  handleClean: (actions: Parameters<typeof cleanRows>[1]) => void
+  darkMode: boolean
+  toggleDark: () => void
+  isLight: boolean
+  cardBg: string
+  cardBorder: string
+  textMain: string
+  textMuted: string
+  inputBg: string
+  inputBorder: string
+}
+
 export default function Home() {
+  const [darkMode, setDarkMode] = useState(false)
   const [dataset, setDataset] = useState<ParsedDataset | null>(null)
   const [cleaned, setCleaned] = useState<Row[] | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('parser')
@@ -63,6 +111,25 @@ export default function Home() {
   const [parseError, setParseError] = useState<string | null>(null)
   const [chartPng, setChartPng] = useState<string | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
+
+  // Dark mode persistence
+  useEffect(() => {
+    const saved = localStorage.getItem('datadrop:dark')
+    if (saved === '1' || (saved === null && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      setDarkMode(true)
+    }
+    if (darkMode) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }, [darkMode])
+
+  const toggleDark = () => {
+    const next = !darkMode
+    setDarkMode(next)
+    localStorage.setItem('datadrop:dark', next ? '1' : '0')
+  }
 
   const handleFile = useCallback((file: File) => {
     setParseError(null)
@@ -224,16 +291,30 @@ export default function Home() {
     { key: 'summary' as Tab, label: 'Summary' },
   ]
 
+  const isLight = !darkMode
+  const bgGradient = isLight
+    ? 'bg-gradient-to-b from-slate-50 via-white to-slate-100'
+    : 'bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950'
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
+    <div className={`min-h-screen flex flex-col transition-colors duration-300 ${bgGradient}`}>
       {!dataset ? (
         <LandingSection
           handleFile={handleFile}
           loadSampleDataset={loadSampleDataset}
           handleApkDownload={handleApkDownload}
+          toggleDark={toggleDark}
+          darkMode={darkMode}
           isParsing={isParsing}
           isDownloading={isDownloading}
           reset={reset}
+          isLight={isLight}
+          cardBg={isLight ? 'bg-white/80' : 'bg-slate-900/60'}
+          cardBorder={isLight ? 'border-slate-200' : 'border-slate-800/50'}
+          textMain={isLight ? 'text-slate-900' : 'text-slate-100'}
+          textMuted={isLight ? 'text-slate-500' : 'text-slate-400'}
+          inputBg={isLight ? 'bg-white' : 'bg-slate-900/50'}
+          inputBorder={isLight ? 'border-slate-300' : 'border-slate-700'}
         />
       ) : (
         <LoadedSection
@@ -249,52 +330,65 @@ export default function Home() {
           chartPng={chartPng}
           reset={reset}
           handleClean={handleClean}
+          darkMode={darkMode}
+          toggleDark={toggleDark}
+          isLight={isLight}
+          cardBg={isLight ? 'bg-white/90' : 'bg-slate-900/80'}
+          cardBorder={isLight ? 'border-slate-200' : 'border-slate-800/50'}
+          textMain={isLight ? 'text-slate-900' : 'text-slate-100'}
+          textMuted={isLight ? 'text-slate-500' : 'text-slate-400'}
+          inputBg={isLight ? 'bg-white' : 'bg-slate-900/50'}
+          inputBorder={isLight ? 'border-slate-300' : 'border-slate-700'}
         />
       )}
     </div>
   )
 }
 
-function LandingSection({
-  handleFile,
-  loadSampleDataset,
-  handleApkDownload,
-  isParsing,
-  isDownloading,
-  reset,
-}: {
-  handleFile: (file: File) => void
-  loadSampleDataset: () => void
-  handleApkDownload: () => void
-  isParsing: boolean
-  isDownloading: boolean
-  reset: () => void
-}) {
+const LandingSection = (props: LandingSectionProps) => {
+  const {
+    handleFile,
+    loadSampleDataset,
+    handleApkDownload,
+    toggleDark,
+    darkMode,
+    isParsing,
+    isDownloading,
+    reset,
+    isLight,
+    textMain,
+    textMuted,
+  } = props;
+
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-white to-slate-100">
-      <nav className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur-md">
+    <div className="min-h-screen flex flex-col overflow-x-hidden">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="sticky top-0 z-40 border-b border-white/10 bg-white/10 backdrop-blur-xl"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/40">
                 <FileText className="w-6 h-6" />
               </div>
               <div>
-                <span className="font-bold text-xl tracking-tight text-slate-900">DataDrop</span>
-                <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full block mt-1">Offline-first APK</span>
+                <span className={`font-bold text-xl tracking-tight ${textMain}`}>DataDrop</span>
+                <span className="text-xs font-medium text-indigo-500 dark:text-indigo-300 bg-indigo-500/10 dark:bg-indigo-500/20 px-2.5 py-0.5 rounded-full block mt-1">Offline-first APK</span>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={reset}
-                className="text-sm text-slate-500 hover:text-slate-700 font-medium transition"
-                disabled
+                onClick={toggleDark}
+                className={`p-2 rounded-xl transition-all ${isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-slate-800 text-yellow-400 hover:bg-slate-700'}`}
+                aria-label="Toggle dark mode"
               >
-                New dataset
+                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
               <a
                 href={APK_DOWNLOAD_URL}
-                className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 shadow-lg shadow-indigo-500/40 transition flex items-center gap-2"
+                className={`px-4 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center gap-2 shadow-lg ${isLight ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/40' : 'bg-indigo-500 text-white hover:bg-indigo-600 shadow-indigo-500/50'}`}
               >
                 <Smartphone className="w-4 h-4" />
                 Get the APK
@@ -302,31 +396,62 @@ function LandingSection({
             </div>
           </div>
         </div>
-      </nav>
+      </motion.div>
 
       <div className="flex-1 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-purple-50 pointer-events-none" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold mb-6 uppercase tracking-wider shadow-sm">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-200/40 rounded-full blur-3xl -translate-y-1/3 dark:bg-indigo-900/30" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-200/40 rounded-full blur-3xl -translate-y-1/3 dark:bg-purple-900/30" />
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-24 relative z-10"
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100/80 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-semibold mb-8 uppercase tracking-wider backdrop-blur-sm border border-white/20 dark:border-indigo-500/30"
+          >
             <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-600" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400/60 opacity-70" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-600 dark:bg-indigo-400" />
             </span>
             DataDrop · Mobile Data Cleaner
-          </div>
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-slate-900 mb-6 leading-tight">
-            Clean your data<br />
-            <span className="text-indigo-600 font-bold">anywhere — even offline.</span>
-          </h1>
-          <p className="text-lg md:text-xl text-slate-600 max-w-2xl mb-10 leading-relaxed">
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight"
+          >
+            <span className={`${textMain} dark:text-slate-100`}>Clean your data</span><br />
+            <span className="text-gradient bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-indigo-400 dark:to-purple-500 font-bold">
+              anywhere — even offline.
+            </span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="text-lg md:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mb-12 leading-relaxed"
+          >
             Upload a CSV, JSON, or Excel file to instantly inspect, clean, and visualize it — right
             from your phone's browser. Install the APK to work with files from WhatsApp or email
             completely offline.
-          </p>
+          </motion.p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <label className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-semibold text-lg hover:bg-indigo-700 shadow-xl shadow-indigo-500/40 transition cursor-pointer">
-              <Download className="w-5 h-5 mr-2" />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center mb-12"
+          >
+            <label className={`px-8 py-4 rounded-2xl font-semibold text-lg transition-all shadow-xl cursor-pointer flex items-center justify-center gap-2 ${isParsing ? 'bg-white/30 text-slate-400 border-white/20 opacity-60 cursor-not-allowed dark:bg-slate-800/30 dark:border-slate-700' : isLight ? 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:-translate-y-1' : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700 hover:text-white hover:-translate-y-1'}`}>
+              <Download className="w-5 h-5" />
               Choose file (CSV / JSON / Excel)
               <input
                 type="file"
@@ -338,11 +463,7 @@ function LandingSection({
             <button
               onClick={loadSampleDataset}
               disabled={isParsing}
-              className={`px-8 py-4 rounded-2xl font-semibold text-lg border shadow-md transition flex items-center justify-center gap-2 ${
-                isParsing
-                  ? 'bg-white text-slate-400 border-slate-200 opacity-60 cursor-not-allowed'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
-              }`}
+              className={`px-8 py-4 rounded-2xl font-semibold text-lg transition-all flex items-center justify-center gap-2 shadow-lg ${isParsing ? 'bg-white/30 text-slate-400 border-white/20 opacity-60 cursor-not-allowed dark:bg-slate-800/30 dark:border-slate-700' : isLight ? 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:-translate-y-1' : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700 hover:text-white hover:-translate-y-1'}`}
             >
               {isParsing ? (
                 <>
@@ -356,23 +477,24 @@ function LandingSection({
                 </>
               )}
             </button>
-          </div>
+          </motion.div>
 
-          <div className="rounded-3xl bg-white border border-slate-200 shadow-xl overflow-hidden flex flex-col md:flex-row">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="rounded-3xl overflow-hidden flex flex-col md:flex-row border border-white/20 dark:border-white/10 shadow-2xl"
+          >
             <div className="p-8 md:p-12 flex-1">
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">Get the mobile app</h2>
-              <p className="text-slate-600 mb-6">
+              <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-white">Get the mobile app</h2>
+              <p className="text-slate-600 dark:text-slate-300 mb-6">
                 Install DataDrop on Android to inspect files straight from your downloads — no
                 internet needed.
               </p>
               <button
                 onClick={handleApkDownload}
                 disabled={isDownloading}
-                className={`w-full py-4 rounded-2xl font-bold text-lg shadow-xl transition transform hover:-translate-y-1 flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed ${
-                  isDownloading
-                    ? 'bg-slate-200 text-slate-400'
-                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 shadow-indigo-500/50'
-                }`}
+                className={`w-full py-4 rounded-2xl font-bold text-lg transition-all shadow-xl flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed ${isDownloading ? 'bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 shadow-indigo-500/50 hover:shadow-indigo-500/80 hover:-translate-y-1'}`}
               >
                 {isDownloading ? (
                   <>
@@ -386,59 +508,70 @@ function LandingSection({
                   </>
                 )}
               </button>
-              <p className="text-xs text-slate-400 mt-3">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
                 Sideload on Android · Enable "Install unknown apps" for your browser
               </p>
             </div>
             <div className="hidden md:flex items-center justify-center p-8">
-              <div className="w-48 h-48 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shadow-lg shadow-indigo-100">
-                <Smartphone className="w-24 h-24 text-indigo-500" />
+              <div className="w-48 h-48 rounded-2xl bg-indigo-50/40 dark:bg-indigo-900/30 border border-indigo-100/30 dark:border-indigo-500/30 flex items-center justify-center shadow-lg shadow-indigo-200/30 dark:shadow-indigo-900/30">
+                <Smartphone className="w-24 h-24 text-indigo-500 dark:text-indigo-400" />
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6"
+          >
             {[
               {
                 title: 'Instant file parser',
                 desc: 'CSV, JSON, Excel — see rows, columns, types, nulls, and outliers.',
-                color: 'bg-indigo-100 text-indigo-600',
+                color: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400',
                 Icon: Download,
               },
               {
                 title: 'One-tap cleaning',
                 desc: 'Dedupe, trim whitespace, fill missing values — no code required.',
-                color: 'bg-emerald-100 text-emerald-600',
+                color: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
                 Icon: Zap,
               },
               {
                 title: 'Quick charts',
                 desc: 'Bar, line, scatter, distribution — export as PNG.',
-                color: 'bg-blue-100 text-blue-600',
+                color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
                 Icon: Smartphone,
               },
             ].map((f) => {
               const Icon = f.Icon
               return (
-                <div key={f.title} className="p-6 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition">
-                  <div className={`w-12 h-12 rounded-xl ${f.color} flex items-center justify-center mb-5`}>
+                <motion.div
+                  key={f.title}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.7 }}
+                  className="p-6 rounded-2xl transition-all hover:-translate-y-2 shadow-sm border"
+                >
+                  <div className={`w-12 h-12 rounded-xl ${f.color} flex items-center justify-center mb-6 shadow-lg`}>
                     <Icon className="w-6 h-6" />
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-2">{f.title}</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed">{f.desc}</p>
-                </div>
+                  <h3 className="text-lg font-bold mb-2 text-slate-900 dark:text-white">{f.title}</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{f.desc}</p>
+                </motion.div>
               )
             })}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
 
-      <footer className="border-t border-slate-200 bg-white py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-400">
-          <span>DataDrop — client-side only. Your data never leaves your device.</span>
+      <footer className="border-t border-white/20 dark:border-white/10 bg-white/5 dark:bg-slate-900/5 backdrop-blur py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+          <span className={textMuted}>DataDrop — client-side only. Your data never leaves your device.</span>
           <span className="flex gap-4">
-            <a href="#" className="hover:text-slate-700">Privacy</a>
-            <a href="#" className="hover:text-slate-700">Terms</a>
+            <a href="#" className={`hover:text-indigo-400 transition ${textMuted}`}>Privacy</a>
+            <a href="#" className={`hover:text-indigo-400 transition ${textMuted}`}>Terms</a>
           </span>
         </div>
       </footer>
@@ -446,69 +579,67 @@ function LandingSection({
   )
 }
 
-function LoadedSection({
-  dataset,
-  currentRows,
-  columns,
-  stats,
-  numericCols,
-  activeTab,
-  setActiveTab,
-  tabs,
-  parseError,
-  chartPng,
-  reset,
-  handleClean,
-}: {
-  dataset: ParsedDataset
-  currentRows: Row[]
-  columns: string[]
-  stats: ColumnStats[]
-  numericCols: string[]
-  activeTab: Tab
-  setActiveTab: (t: Tab) => void
-  tabs: { key: Tab; label: string }[]
-  parseError: string | null
-  chartPng: string | null
-  reset: () => void
-  handleClean: (actions: Parameters<typeof cleanRows>[1]) => void
-}) {
+const LoadedSection = (props: LoadedSectionProps) => {
+  const {
+    dataset,
+    currentRows,
+    columns,
+    stats,
+    numericCols,
+    activeTab,
+    setActiveTab,
+    tabs,
+    parseError,
+    chartPng,
+    reset,
+    handleClean,
+    darkMode,
+    toggleDark,
+    isLight,
+    textMain,
+    textMuted,
+  } = props;
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      <nav className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <div className="min-h-screen flex flex-col overflow-x-hidden">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className={`sticky top-0 z-40 border-b border-white/10 bg-white/10 backdrop-blur-xl transition-colors duration-300 ${isLight ? 'bg-white/80' : 'bg-slate-900/80'}`}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <button
                 onClick={reset}
-                className="p-2 text-slate-400 hover:text-indigo-600 transition"
+                className="p-2 rounded-xl transition-all hover:bg-white/20 dark:hover:bg-slate-800"
                 title="New dataset"
               >
-                <RotateCw className="w-5 h-5" />
+                <RotateCw className="w-5 h-5 text-slate-600 dark:text-slate-300" />
               </button>
               <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-lg">
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/40">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="font-bold text-sm text-slate-900">{dataset.name}</span>
-                  <span className="text-xs text-slate-500">
+                  <span className={`font-bold text-sm ${textMain}`}>{dataset.name}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     {dataset.rows.length} rows × {dataset.columns.length} cols
                   </span>
                 </div>
               </div>
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap items-center">
               <button
                 onClick={() => {}}
-                className="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 transition"
+                className={`px-3 py-2 rounded-xl transition-all text-sm font-medium ${isLight ? 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900' : 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white'}`}
               >
                 Back to upload
               </button>
               <a
                 href={URL.createObjectURL(new Blob([unparse(currentRows)], { type: 'text/csv' }))}
                 download={`cleaned-${dataset.name.replace(/\.[^/.]+$/, '')}.csv`}
-                className="px-4 py-2 bg-slate-900 text-white rounded-xl font-semibold text-sm hover:bg-slate-800 shadow-md transition flex items-center gap-2"
+                className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all shadow-md flex items-center gap-2 ${isLight ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
               >
                 <Download className="w-4 h-4" />
                 Export CSV
@@ -516,103 +647,122 @@ function LoadedSection({
               <a
                 href={URL.createObjectURL(new Blob([JSON.stringify(currentRows, null, 2)], { type: 'application/json' }))}
                 download={`cleaned-${dataset.name.replace(/\.[^/.]+$/, '')}.json`}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-500/40 transition flex items-center gap-2"
+                className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all shadow-md shadow-indigo-500/30 flex items-center gap-2 ${isLight ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-indigo-500 text-white hover:bg-indigo-600'}`}
               >
                 <Download className="w-4 h-4" />
                 Export JSON
               </a>
+              <button
+                onClick={toggleDark}
+                className="p-2 rounded-xl transition-all hover:bg-white/20 dark:hover:bg-slate-800"
+                aria-label="Toggle dark mode"
+              >
+                {darkMode ? <Sun className="w-5 h-5 text-slate-600 dark:text-slate-300" /> : <Moon className="w-5 h-5 text-slate-600 dark:text-slate-300" />}
+              </button>
             </div>
           </div>
         </div>
-      </nav>
+      </motion.div>
 
       {parseError && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="rounded-2xl bg-red-50 border border-red-200 p-5 shadow-sm">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4"
+        >
+          <div className={`rounded-2xl p-5 shadow-sm border transition-all ${isLight ? 'bg-red-50 border-red-200' : 'bg-red-900/20 border-red-800/50'}`}>
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
               <div>
-                <h3 className="text-sm font-semibold text-red-900">Parse error</h3>
-                <p className="text-sm text-red-700 mt-1">{parseError}</p>
+                <h3 className="text-sm font-semibold text-red-900 dark:text-red-100">Parse error</h3>
+                <p className="text-sm text-red-700 dark:text-red-300 mt-1">{parseError}</p>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       <div className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-2 mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex gap-2 mb-6"
+        >
           {tabs.map((t) => (
-            <button
+            <motion.button
               key={t.key}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setActiveTab(t.key)}
-              className={`px-4 py-2 rounded-2xl text-sm font-medium transition ${
+              className={`px-4 py-2 rounded-2xl text-sm font-medium transition-all shadow-sm ${
                 activeTab === t.key
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900'
+                  ? isLight ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/40' : 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/60'
+                  : isLight ? 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'
               }`}
             >
               {t.label}
-            </button>
+            </motion.button>
           ))}
-        </div>
+        </motion.div>
 
-        <div className="rounded-3xl bg-white border border-slate-200 shadow-xl overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`rounded-3xl overflow-hidden border border-white/20 dark:border-white/10 shadow-2xl transition-all ${isLight ? 'bg-white/90' : 'bg-slate-900/90'}`}
+        >
           {activeTab === 'parser' && (
-            <div className="p-8 border-b border-slate-100">
+            <div className="p-8 border-b border-white/10 dark:border-white/10">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900 mb-1">Dataset preview</h2>
-                  <p className="text-sm text-slate-500">
+                  <h2 className={`text-lg font-bold ${textMain} mb-1`}>Dataset preview</h2>
+                  <p className={`text-sm ${textMuted}`}>
                     First 50 rows shown. Use Clean to transform, then Charts or Summary to analyze.
                   </p>
                 </div>
               </div>
-              <DataTable columns={columns} rows={currentRows} maxRows={50} />
+              <DataTable columns={columns} rows={currentRows} maxRows={50} isLight={isLight} textMain={textMain} textMuted={textMuted} inputBg="" inputBorder="" />
             </div>
           )}
           {activeTab === 'clean' && (
-            <DataCleaner dataset={dataset} onClean={handleClean} />
+            <DataCleaner dataset={dataset} onClean={handleClean} isLight={isLight} textMain={textMain} textMuted={textMuted} inputBg="" inputBorder="" />
           )}
           {activeTab === 'visualize' && (
-            <ChartStudio
-              columns={columns}
-              rows={currentRows}
-              numericCols={numericCols}
-              stats={stats}
-              onExportPng={() => {}}
-            />
+            <ChartStudio columns={columns} rows={currentRows} numericCols={numericCols} stats={stats} onExportPng={() => {}} isLight={isLight} textMain={textMain} textMuted={textMuted} inputBg="" inputBorder="" />
           )}
           {activeTab === 'summary' && (
-            <SummaryCards columns={columns} rows={currentRows} stats={stats} />
+            <SummaryCards columns={columns} rows={currentRows} stats={stats} isLight={isLight} textMain={textMain} textMuted={textMuted} inputBg="" inputBorder="" />
           )}
-        </div>
+        </motion.div>
 
         {chartPng && (
-          <div className="mt-8 rounded-3xl bg-white border border-slate-200 shadow-xl overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Chart export</h2>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-8 rounded-3xl overflow-hidden border border-white/20 dark:border-white/10 shadow-2xl"
+          >
+            <div className="p-6 border-b border-white/20 dark:border-white/10 flex items-center justify-between">
+              <h2 className={`text-lg font-bold ${textMain}`}>Chart export</h2>
               <a
                 href={chartPng}
                 download="datadrop-chart.png"
-                className="px-4 py-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-2"
+                className={`px-4 py-2 text-sm font-semibold transition-all flex items-center gap-2 ${isLight ? 'text-indigo-600 hover:text-indigo-700' : 'text-indigo-400 hover:text-indigo-300'}`}
               >
                 <Download className="w-4 h-4" /> Download PNG
               </a>
             </div>
-            <div className="p-8 flex justify-center items-center min-h-[300px] bg-slate-50">
-              <img src={chartPng} alt="Exported chart" className="max-w-full max-h-[500px] rounded-xl border border-slate-200 shadow-lg" />
+            <div className="p-8 flex justify-center items-center min-h-[300px]">
+              <img src={chartPng} alt="Exported chart" className="max-w-full max-h-[500px] rounded-xl border border-white/20 shadow-xl" />
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
 
-      <footer className="border-t border-slate-200 bg-white py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-400">
-          <span>DataDrop — client-side only. Your data never leaves your device.</span>
+      <footer className="border-t border-white/20 dark:border-white/10 bg-white/5 dark:bg-slate-900/5 backdrop-blur py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+          <span className={textMuted}>DataDrop — client-side only. Your data never leaves your device.</span>
           <span className="flex gap-4">
-            <a href="#" className="hover:text-slate-700">Privacy</a>
-            <a href="#" className="hover:text-slate-700">Terms</a>
+            <a href="#" className={`hover:text-indigo-400 transition ${textMuted}`}>Privacy</a>
+            <a href="#" className={`hover:text-indigo-400 transition ${textMuted}`}>Terms</a>
           </span>
         </div>
       </footer>
