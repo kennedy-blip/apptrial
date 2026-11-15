@@ -1,0 +1,9 @@
+{
+  "appId": "com.apptrial.app",
+  "appName": "AppTrial",
+  "webDir": "../web/out",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}
