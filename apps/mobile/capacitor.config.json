@@ -1,6 +1,6 @@
 {
   "appId": "com.apptrial.app",
-  "appName": "AppTrial",
+  "appName": "DataDrop",
   "webDir": "../web/out",
   "bundledWebRuntime": false,
   "server": {
