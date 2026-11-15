@@ -1,5 +1,6 @@
 'use client'
 
+import { motion } from 'framer-motion'
 import { ColumnStats } from '@/lib/stats'
 
 interface SummaryCardsProps {
@@ -22,8 +23,13 @@ export function SummaryCards({ columns, rows, stats, isLight, textMain, textMute
 
   return (
     <div className="p-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+      >
         <StatCard
+          key="rows"
           label="Rows"
           value={totalRows.toLocaleString()}
           desc="Total records"
@@ -33,6 +39,7 @@ export function SummaryCards({ columns, rows, stats, isLight, textMain, textMute
           textMain={textMain}
         />
         <StatCard
+          key="columns"
           label="Columns"
           value={columns.length.toLocaleString()}
           desc="Fields detected"
@@ -42,6 +49,7 @@ export function SummaryCards({ columns, rows, stats, isLight, textMain, textMute
           textMain={textMain}
         />
         <StatCard
+          key="nulls"
           label="Null cells"
           value={totalNulls.toLocaleString()}
           desc={`${nullPercent.toFixed(1)}% of all cells`}
@@ -51,6 +59,7 @@ export function SummaryCards({ columns, rows, stats, isLight, textMain, textMute
           textMain={textMain}
         />
         <StatCard
+          key="numeric"
           label="Numeric cols"
           value={numericStats.length.toLocaleString()}
           desc="Available for charts"
@@ -59,9 +68,14 @@ export function SummaryCards({ columns, rows, stats, isLight, textMain, textMute
           isLight={isLight}
           textMain={textMain}
         />
-      </div>
+      </motion.div>
 
-      <div className={`rounded-2xl overflow-hidden border border-white/20 dark:border-white/10 shadow-xl transition-all ${isLight ? 'bg-white/90' : 'bg-slate-900/80'}`}>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.08 }}
+        className={`rounded-2xl overflow-hidden border border-white/20 dark:border-white/10 shadow-2xl glass-card`}
+      >
         <div className="p-5 border-b border-white/10 dark:border-white/10">
           <h2 className={`text-lg font-semibold ${textMain}`}>Column summary</h2>
           <p className={`text-sm ${textMuted} mt-1`}>
@@ -103,9 +117,14 @@ export function SummaryCards({ columns, rows, stats, isLight, textMain, textMute
               </thead>
               <tbody>
                 {numericStats.map((s) => (
-                  <tr key={s.name} className={`border-b border-white/10 dark:border-white/10 transition-colors hover:${
-                    isLight ? 'bg-slate-50' : 'bg-slate-800/50'
-                  }`}>
+                  <motion.tr
+                    key={s.name}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: s.name.length * 0.005 }}
+                    whileHover={{ backgroundColor: isLight ? '#f8fafc' : '#1e293b' }}
+                    className={`border-b border-white/10 dark:border-white/10 transition-colors duration-200 ${isLight ? 'bg-white/60' : 'bg-slate-800/40'}`}
+                  >
                     <td className="px-4 py-2 text-sm font-medium font-mono">
                       <span className={`text-slate-700 dark:text-slate-300`}>{s.name}</span>
                     </td>
@@ -137,15 +156,20 @@ export function SummaryCards({ columns, rows, stats, isLight, textMain, textMute
                     <td className="px-4 py-2 text-sm text-right font-mono">
                       <span className={`text-slate-600 dark:text-slate-300`}>{s.nulls}</span>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </motion.div>
 
-      <div className="mt-6 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-white/10 dark:border-white/10 p-5 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.16 }}
+        className="mt-6 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-white/10 dark:border-white/10 p-5 backdrop-blur-sm glass-panel-soft"
+      >
         <h2 className={`text-lg font-semibold mb-4 ${textMain}`}>Quick correlations</h2>
         <p className={`text-sm ${textMuted} mb-4`}>
           Pick two numeric columns to see their Pearson correlation coefficient (-1 to 1).
@@ -155,7 +179,14 @@ export function SummaryCards({ columns, rows, stats, isLight, textMain, textMute
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {numericStats.slice(0, 6).map((s) => (
-              <div key={s.name} className={`bg-white/30 dark:bg-slate-800/30 rounded-lg p-3 border border-white/10 dark:border-white/10`}>
+              <motion.div
+                key={s.name}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: s.name.length * 0.005 }}
+                whileHover={{ y: -2 }}
+                className={`bg-white/30 dark:bg-slate-800/30 rounded-lg p-3 border border-white/10 dark:border-white/10 transition-all duration-200`}
+              >
                 <div className={`text-xs font-medium uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400`}>{s.name}</div>
                 <div className={`text-sm ${textMain}`}>
                   Mean: <span className="font-mono">{s.mean?.toFixed(2) ?? '—'}</span>
@@ -163,11 +194,11 @@ export function SummaryCards({ columns, rows, stats, isLight, textMain, textMute
                 <div className={`text-sm ${textMain} mt-1`}>
                   Std dev: <span className="font-mono">{s.std?.toFixed(2) ?? '—'}</span>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   )
 }
@@ -184,7 +215,10 @@ interface StatCardProps {
 
 function StatCard({ label, value, desc, color, iconPath, isLight, textMain }: StatCardProps) {
   return (
-    <div className={`${color} rounded-xl p-4 transition-all hover:-translate-y-1`}>
+    <motion.div
+      whileHover={{ y: -4 }}
+      className={`${color} rounded-xl p-4 transition-all duration-300 ease-out`}
+    >
       <div className="flex items-center justify-between mb-2">
         <span className={`text-xs font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{label}</span>
         <div className="p-1.5 rounded bg-white/60 dark:bg-white/10">
@@ -195,6 +229,6 @@ function StatCard({ label, value, desc, color, iconPath, isLight, textMain }: St
       </div>
       <div className={`text-2xl font-bold ${textMain}`}>{value}</div>
       <div className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>{desc}</div>
-    </div>
+    </motion.div>
   )
 }

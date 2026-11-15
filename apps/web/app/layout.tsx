@@ -21,8 +21,24 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="h-full" suppressHydrationWarning>
       <body className="min-h-full font-sans antialiased">{children}</body>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            (function() {
+              try {
+                var saved = localStorage.getItem('datadrop:dark');
+                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                var shouldBeDark = saved === '1' || (saved === null && prefersDark);
+                if (shouldBeDark) {
+                  document.documentElement.classList.add('dark');
+                }
+              } catch (e) {}
+            })();
+          `,
+        }}
+      />
     </html>
   )
 }
