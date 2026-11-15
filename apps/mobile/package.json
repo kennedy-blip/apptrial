@@ -1,0 +1,16 @@
+{
+  "name": "apptrial-mobile",
+  "version": "1.0.0",
+  "description": "Capacitor Android wrapper for AppTrial — builds into AppTrial.apk",
+  "main": "index.js",
+  "scripts": {
+    "sync": "npx cap sync",
+    "open:android": "npx cap open android",
+    "build:web": "cd ../web && npm run build && cd .. && npx cap sync"
+  },
+  "devDependencies": {
+    "@capacitor/android": "6.1.1",
+    "@capacitor/cli": "6.1.1",
+    "@capacitor/core": "6.1.1"
+  }
+}

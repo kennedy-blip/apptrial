@@ -1,0 +1,11 @@
+{
+  "headers": [
+    {
+      "source": "/AppTrial.apk",
+      "headers": [
+        { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"AppTrial.apk\"" }
+      ]
+    }
+  ]
+}

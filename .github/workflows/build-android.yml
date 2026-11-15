@@ -1,0 +1,72 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK licenses
+        run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build web app (Next.js static export)
+        run: |
+          cd apps/web
+          npm ci
+          npm run build
+
+      - name: Prepare Capacitor Android project
+        run: |
+          cd apps/mobile
+          npm ci
+          npx cap add android
+          npx cap sync
+
+      - name: Build debug APK
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleDebug
+
+      - name: Stage APK with release name
+        run: cp apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk AppTrial.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppTrial.apk
+          path: AppTrial.apk
+          retention-days: 30
+
+      - name: Publish to GitHub Release (latest)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          if gh release view AppTrial-latest --json tagName >/dev/null 2>&1; then
+            gh release upload AppTrial-latest AppTrial.apk --clobber
+          else
+            gh release create AppTrial-latest AppTrial.apk \
+              --title "AppTrial — latest" \
+              --notes "Auto-built from main branch. Install AppTrial.apk on your Android device." \
+              --latest
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
