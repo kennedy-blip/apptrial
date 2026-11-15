@@ -2,12 +2,27 @@ name: Build Android APK
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - arena/6be6e2e8-apptrial
+    paths:
+      - "apps/web/**"
+      - "apps/mobile/**"
+      - ".github/workflows/build-android.yml"
   workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
+    name: Build AppTrial APK
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -16,57 +31,70 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: "17"
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
-      - name: Accept Android SDK licenses
-        run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+      - name: Install Android SDK packages and accept licenses
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            apps/mobile/package-lock.json
 
-      - name: Build web app (Next.js static export)
+      - name: Install and build web app
+        working-directory: apps/web
         run: |
-          cd apps/web
           npm ci
           npm run build
+          test -d out
 
-      - name: Prepare Capacitor Android project
+      - name: Install mobile dependencies and generate Android project
+        working-directory: apps/mobile
         run: |
-          cd apps/mobile
           npm ci
           npx cap add android
-          npx cap sync
+          npx cap sync android
 
       - name: Build debug APK
         working-directory: apps/mobile/android
-        run: ./gradlew assembleDebug
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
 
-      - name: Stage APK with release name
-        run: cp apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk AppTrial.apk
+      - name: Stage APK
+        run: |
+          mkdir -p dist
+          cp apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk dist/AppTrial.apk
+          test -s dist/AppTrial.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AppTrial.apk
-          path: AppTrial.apk
+          name: AppTrial-apk
+          path: dist/AppTrial.apk
+          if-no-files-found: error
           retention-days: 30
 
-      - name: Publish to GitHub Release (latest)
-        if: github.ref == 'refs/heads/main'
-        run: |
-          if gh release view AppTrial-latest --json tagName >/dev/null 2>&1; then
-            gh release upload AppTrial-latest AppTrial.apk --clobber
-          else
-            gh release create AppTrial-latest AppTrial.apk \
-              --title "AppTrial — latest" \
-              --notes "Auto-built from main branch. Install AppTrial.apk on your Android device." \
-              --latest
-          fi
+      - name: Publish APK to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view AppTrial-latest >/dev/null 2>&1; then
+            gh release upload AppTrial-latest dist/AppTrial.apk --clobber
+          else
+            gh release create AppTrial-latest dist/AppTrial.apk \
+              --target "${GITHUB_SHA}" \
+              --title "AppTrial — latest Android APK" \
+              --notes "Automatically built from ${GITHUB_REF_NAME}. Download AppTrial.apk and install it on an Android device."
+          fi
