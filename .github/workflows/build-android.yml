@@ -80,14 +80,14 @@ jobs:
       - name: Stage APK
         run: |
           mkdir -p dist
-          cp apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk dist/DataDrop.apk
-          test -s dist/DataDrop.apk
+          cp apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk dist/AppTrial.apk
+          test -s dist/AppTrial.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: DataDrop-apk
-          path: dist/DataDrop.apk
+          path: dist/AppTrial.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -95,11 +95,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release view DataDrop-latest >/dev/null 2>&1; then
-            gh release upload DataDrop-latest dist/DataDrop.apk --clobber
+          if gh release view AppTrial-latest >/dev/null 2>&1; then
+            gh release upload AppTrial-latest dist/AppTrial.apk --clobber
           else
-            gh release create DataDrop-latest dist/DataDrop.apk \
+            gh release create AppTrial-latest dist/AppTrial.apk \
               --target "${GITHUB_SHA}" \
               --title "DataDrop — latest Android APK" \
-              --notes "Automatically built from ${GITHUB_REF_NAME}. Download DataDrop.apk and install it on an Android device."
+              --notes "Automatically built from ${GITHUB_REF_NAME}. Download AppTrial.apk and install it on an Android device."
           fi
