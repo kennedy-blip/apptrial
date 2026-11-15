@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - arena/6be6e2e8-apptrial
+      - arena/datadrop-polish-2026-11
     paths:
       - "apps/web/**"
       - "apps/mobile/**"
@@ -20,7 +21,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build AppTrial APK
+    name: Build DataDrop APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -54,10 +55,14 @@ jobs:
 
       - name: Install and build web app
         working-directory: apps/web
+        env:
+          # Vercel keeps Next.js's normal .next output. Only this Android
+          # build opts into static export for the Capacitor webDir.
+          CAPACITOR_BUILD: "1"
         run: |
           npm ci
           npm run build
-          test -d out
+          test -f out/index.html
 
       - name: Install mobile dependencies and generate Android project
         working-directory: apps/mobile
@@ -75,14 +80,14 @@ jobs:
       - name: Stage APK
         run: |
           mkdir -p dist
-          cp apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk dist/AppTrial.apk
-          test -s dist/AppTrial.apk
+          cp apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk dist/DataDrop.apk
+          test -s dist/DataDrop.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AppTrial-apk
-          path: dist/AppTrial.apk
+          name: DataDrop-apk
+          path: dist/DataDrop.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -90,11 +95,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release view AppTrial-latest >/dev/null 2>&1; then
-            gh release upload AppTrial-latest dist/AppTrial.apk --clobber
+          if gh release view DataDrop-latest >/dev/null 2>&1; then
+            gh release upload DataDrop-latest dist/DataDrop.apk --clobber
           else
-            gh release create AppTrial-latest dist/AppTrial.apk \
+            gh release create DataDrop-latest dist/DataDrop.apk \
               --target "${GITHUB_SHA}" \
-              --title "AppTrial — latest Android APK" \
-              --notes "Automatically built from ${GITHUB_REF_NAME}. Download AppTrial.apk and install it on an Android device."
+              --title "DataDrop — latest Android APK" \
+              --notes "Automatically built from ${GITHUB_REF_NAME}. Download DataDrop.apk and install it on an Android device."
           fi
