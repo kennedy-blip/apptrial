@@ -1,14 +1,32 @@
-# AppTrial
+# DataDrop — Mobile Data Cleaner & Quick Chart Studio
 
-Mobile app (.apk) + web landing page deployed on Vercel.
+Pocket data-wrangling utility: inspect CSV/JSON/Excel files, clean missing values, run summary stats, and generate charts — in the browser (Vercel) or as an offline Android APK.
+
+**Live web app:** https://datadrop-web-sigma.vercel.app
 
 ## What this repo contains
 
 | Folder | Purpose |
 |--------|---------|
-| `apps/web` | Next.js landing page. Deployed to Vercel. Shows a "Download the app" modal that links to the `.apk`. |
+| `apps/web` | Next.js app (parser, cleaner, chart studio, summary cards). Deployed to Vercel. Shows a "Download the app" modal that links to the `.apk`. |
 | `apps/mobile` | Capacitor Android project. Wraps the web app into a native `.apk`. Build it locally with Android Studio, or via GitHub Actions. |
 | `.github/workflows/build-android.yml` | CI workflow that compiles the `.apk` and publishes it as a GitHub Release artifact. |
+
+## Features
+
+- **Instant file parser** — CSV, JSON, Excel (.xlsx/.xls); shows row/column counts, types, nulls, outliers
+- **One-tap cleaning** — deduplicate, trim whitespace, fill missing values, drop empty rows, pick columns
+- **Quick visuals** — bar, line, scatter, distribution charts with color picker + PNG export
+- **Summary cards** — mean, median, std dev, min/max, null % per numeric column; correlation check
+- **Sample dataset** — built-in messy CSV to try everything without uploading
+- **Export** — cleaned data as CSV or JSON
+
+## Important: I cannot compile the `.apk` in this sandbox
+
+This environment has Node.js but **no Java / Android SDK**, so a compiled `.apk` binary cannot be produced here. What I *can* deliver is the complete source code plus everything you need to generate the `.apk` yourself:
+
+1. **Locally:** install Android Studio, run the mobile build commands below, generate `app-release.apk`.
+2. **Automatically:** push this repo to GitHub — the workflow in `.github/workflows/build-android.yml` builds the `.apk` and attaches it to a GitHub Release for you to download.
 
 ## Important: I cannot compile the `.apk` in this sandbox
 
@@ -27,20 +45,18 @@ This environment has Node.js but **no Java / Android SDK**, so a compiled `.apk`
 ```bash
 cd apps/web
 npm install
-npm run build        # static export into out/
+npm run build        # Next.js build into .next/
 ```
 
 Deploy to Vercel:
 
-```bash
-cd apps/web
-vercel login
-vercel --prod
-```
+The web app is already deployed and live at:
 
-Or connect your GitHub repo to Vercel and set the root directory to `apps/web`.
+**https://datadrop-web-sigma.vercel.app**
 
-The `.apk` file goes in `apps/web/public/` (e.g. `AppTrial.apk`) and is linked from the download modal. Until you build the real APK, there's a placeholder.
+This is a Vercel project (`datadrop-web`) connected to the `kennedy-blip/apptrial` GitHub repo, root directory `apps/web`, building the `arena/6be6e2e8-apptrial` branch. Pushes to that branch trigger a new deployment automatically.
+
+The `.apk` file goes in `apps/web/public/` (e.g. `AppTrial.apk`) and is linked from the download modal. `vercel.json` serves it with the correct MIME type (`application/vnd.android.package-archive`). Until you build the real APK, there's a placeholder.
 
 ## 2) Mobile app (.apk)
 
